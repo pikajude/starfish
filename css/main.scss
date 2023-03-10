@@ -1,0 +1,14 @@
+@import "foundation-sites/scss/foundation";
+
+@include foundation-everything;
+
+.pre-tail {
+  margin-bottom: 10px;
+  overflow-x: scroll;
+}
+
+footer {
+  text-align: right;
+  font-style: italic;
+  font-size: 0.8em;
+}

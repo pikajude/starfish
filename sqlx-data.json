@@ -1,0 +1,591 @@
+{
+  "db": "PostgreSQL",
+  "10f7efea6daa7dff7fc9e2d597f122ded117b2c720040e0d05ee1a7d23782da7": {
+    "query": "UPDATE builds SET status = $1, error_msg = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          },
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "17b34f406b5c696e9bc304d886cd20195a9ceea436fe640921086b5a3032c4b6": {
+    "query": "SELECT * FROM outputs WHERE input_id = any ($1)",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "input_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "system",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "store_path",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "1b612781b1d236e0d7180b0c2a7ac20510d99b76c0dc4513504862d56edb0d7e": {
+    "query": "SELECT id, status as \"status: BuildStatus\" FROM builds WHERE status IN ($1,$2,$3)",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "status: BuildStatus",
+          "type_info": {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          },
+          {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          },
+          {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "2d6c856b3a67821b56247d7a2a7c2f0f83dc67fb229684badec951a0449f69e7": {
+    "query": "UPDATE builds SET status = $2 WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "2fdc36a8373cf7de74277e7904d57cca0ecd2aef5b1f62048168652df69e7eed": {
+    "query": "UPDATE builds SET rev = $2 WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "4e9625fedb23fbe4ac92a8801bdf7d66d963c440dbb0364c737c98c320e59e6f": {
+    "query": "SELECT id, origin, rev, created_at, finished_at, error_msg, status as \"status: _\" FROM builds WHERE id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "origin",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "rev",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 4,
+          "name": "finished_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 5,
+          "name": "error_msg",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false
+      ]
+    }
+  },
+  "5434344484aa0bcd8dca7674f94bcd9e052fe4af385db3096f5f5be413230c36": {
+    "query": "INSERT INTO outputs (input_id, system, store_path) VALUES ($1, $2, $3)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "55ada058538155fba3f8d3c539e735283f1903a37ffc5a458e75090afce88a16": {
+    "query": "SELECT id, origin, created_at, error_msg, finished_at, rev, status as \"status: _\" FROM builds ORDER BY created_at DESC LIMIT 10",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "origin",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 3,
+          "name": "error_msg",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "finished_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 5,
+          "name": "rev",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false
+      ]
+    }
+  },
+  "57a162f91c7a793889dfe5318f426e5e7d19ac4b4eb2ea6e7d384a1fef6b8e4a": {
+    "query": "SELECT * FROM inputs WHERE build_id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "build_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "path",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "6894996e954452e3e9f04706554d28e234ead3c5664ed399dfa03eef29b43981": {
+    "query": "DELETE FROM outputs WHERE id in (select outputs.id from outputs inner join inputs on outputs.input_id = inputs.id where inputs.build_id = $1)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "74abf99c060591703357c8b2194087e7bc5f67d08a475fb8150217fce64daa36": {
+    "query": "SELECT id, origin, rev, created_at, status as \"status: _\", finished_at, error_msg FROM builds WHERE id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "origin",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "rev",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 4,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "finished_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 6,
+          "name": "error_msg",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true
+      ]
+    }
+  },
+  "b7197ea5729e83c7a335383dbdf6e01444f2f136b722f29ad9b2e2328b0d3ee5": {
+    "query": "INSERT INTO builds (origin, rev) VALUES ($1, $2) RETURNING id, origin, rev, created_at, status as \"status: _\", finished_at, error_msg",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "origin",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "rev",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 4,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "finished_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 6,
+          "name": "error_msg",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true
+      ]
+    }
+  },
+  "b933bef360d91e7ed09a9c5f167d7cd0b89e41d3a7316c1c5453bc42c468d8d0": {
+    "query": "UPDATE builds SET status = $2, finished_at = $3 WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          {
+            "Custom": {
+              "name": "build_status",
+              "kind": {
+                "Enum": [
+                  "queued",
+                  "building",
+                  "uploading",
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              }
+            }
+          },
+          "Timestamptz"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "c6fbb1d30a6b683d7ad8191efc8f7aeefdae37aa26a9a08cd2c67d383158d6b8": {
+    "query": "INSERT INTO inputs (build_id, path) VALUES ($1, $2)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "f7599bbef8c317c1ab1a61b2bcba3c5b03855b8a536bcdf369332c567b29d92c": {
+    "query": "SELECT pg_notify($1, $2)",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "pg_notify",
+          "type_info": "Void"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  }
+}
