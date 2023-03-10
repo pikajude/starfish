@@ -1,0 +1,42 @@
+version: "3"
+
+services:
+  db:
+    image: registry.gitlab.com/dfinity-lab/infra-group/starfish/db:${TAG:-latest}
+    stop_signal: SIGTERM
+    volumes:
+      - db:/var/lib/postgresql/data
+  webserver:
+    image: registry.gitlab.com/dfinity-lab/infra-group/starfish/webserver:${TAG:-latest}
+    links:
+      - db
+    environment:
+      - ROCKET_SSH_PRIVATE_KEY
+      - ROCKET_SIGNING_KEY
+      - ROCKET_AWS_ACCESS_KEY
+      - ROCKET_AWS_SECRET_KEY
+    command: /code/target/release/web
+    volumes:
+      - state:/var/lib/starfish
+      - nix:/nix
+    ports:
+      - "8000:8000"
+  worker:
+    image: registry.gitlab.com/dfinity-lab/infra-group/starfish/worker:${TAG:-latest}
+    stop_signal: SIGTERM
+    links:
+      - db
+    environment:
+      - ROCKET_SSH_PRIVATE_KEY
+      - ROCKET_SIGNING_KEY
+      - ROCKET_AWS_ACCESS_KEY
+      - ROCKET_AWS_SECRET_KEY
+    command: /code/target/release/worker
+    volumes:
+      - state:/var/lib/starfish
+      - nix:/nix
+
+volumes:
+  db:
+  state:
+  nix:

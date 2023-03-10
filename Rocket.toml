@@ -1,0 +1,45 @@
+[global]
+s3_region = "eu-central-1"
+
+builders = [
+  "ci@hydra-bare-metal-builder-linux-supermicro-1.dfinity.systems x86_64-linux @@ 32 2 kvm,nixos-test,big-parallel",
+  "ci@hydra-bare-metal-builder-linux-poweredge-r6525-1.dfinity.systems x86_64-linux @@ 32 2 kvm,nixos-test,big-parallel",
+  "ci@hydra-bare-metal-builder-linux-poweredge-r6525-4.dfinity.systems x86_64-linux @@ 32 2 kvm,nixos-test,big-parallel",
+  "ci@hydra-bare-metal-builder-linux-dell-1.dfinity.systems x86_64-linux @@ 8 1 kvm,nixos-test,big-parallel",
+  "ci@eu-hydra-builder-0.dfinity.systems x86_64-linux @@ 6 1 big-parallel",
+  "dfinity@zh-hydra-builder-darwin-4.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
+  "dfinity@zh-hydra-builder-darwin-5.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
+  "dfinity@zh-hydra-builder-darwin-6.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
+  "dfinity@zh-hydra-builder-darwin-7.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
+  "dfinity@zh-hydra-builder-darwin-8.dfinity.systems x86_64-darwin @@ 4 1 big-parallel"
+]
+
+[debug]
+lockfile = "/tmp/starfish.pid"
+log_path = "/tmp/starfish/logs"
+scm_path = "/tmp/starfish/scm"
+cache_bucket = "eu-dfinity-nix-cache-2-jude"
+
+shell = "/bin/bash"
+
+signing_key = "no-such-key"
+aws_access_key = "no-such-key"
+aws_secret_key = "no-such-key"
+# base64 encoded "no-such-key"
+ssh_private_key = "bm8tc3VjaC1rZXkK"
+
+[release]
+lockfile = "/var/run/starfish.pid"
+log_path = "/var/lib/starfish/logs"
+scm_path = "/var/lib/starfish/scm"
+cache_bucket = "eu-dfinity-nix-cache-2"
+
+shell = "/nix/var/nix/profiles/default/bin/bash"
+
+address = "0.0.0.0"
+
+[debug.databases]
+builds = { url = "postgres:///starfish" }
+
+[release.databases]
+builds = { url = "postgres://starfish:starfish@db/starfish"}

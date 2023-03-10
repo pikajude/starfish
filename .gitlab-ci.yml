@@ -1,0 +1,26 @@
+docker-release:
+  image: docker/compose:alpine-1.29.2
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  variables:
+    GIT_PUSH_TOKEN: $GIT_PUSH_TOKEN
+    IMAGE_REGISTRY_BASE: $CI_REGISTRY_IMAGE
+    RELEASE_BRANCH: release
+  script:
+    - TAG=latest docker-compose pull || true 
+    - TAG=latest docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --parallel
+    - TAG=latest docker-compose -f docker-compose.yml -f docker-compose.dev.yml push
+    - TAG=${CI_COMMIT_SHA} docker-compose -f docker-compose.yml -f docker-compose.dev.yml build
+    - TAG=${CI_COMMIT_SHA} docker-compose -f docker-compose.yml -f docker-compose.dev.yml push
+
+    - apk add git && git remote set-url origin https://token:${GIT_PUSH_TOKEN}@$(echo ${CI_PROJECT_URL} | cut -c9-).git && git fetch origin $RELEASE_BRANCH && git checkout $RELEASE_BRANCH && git merge ${CI_COMMIT_SHA} --no-edit --ff && git push
+  tags:
+    # Build on runners that have following tags
+    - dfinity
+    - docker
+    - ubuntu
+  only:
+    - master

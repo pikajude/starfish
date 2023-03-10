@@ -1,0 +1,30 @@
+[package]
+name = "starfish"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.66"
+askama = "0.11.1"
+base64 = "0.13.1"
+inotify = "0.10.0"
+itertools = "0.10.5"
+libc = "0.2.136"
+nix = "0.25.0"
+rust-crypto = "0.2.36"
+tempfile = "3.3.0"
+
+[dependencies.sqlx]
+version = "0.5.13"
+features = ["chrono", "offline"]
+
+[dependencies.chrono]
+version = "0.4.22"
+features = ["serde"]
+
+[build-dependencies]
+pkg-config = "0.3.25"
+vergen = "7.4.2"
+
+[profile.release]
+debug = true
