@@ -26,7 +26,7 @@ pub async fn get_build_tail(
 
   let logfile = File::open(&log_path)?;
 
-  let (sender, sse_stream) = actix_web_lab::sse::channel(10);
+  let (sender, sse_stream) = sse::channel(10);
 
   let jh = actix_web::rt::spawn(async move {
     if let Err(e) = tail_the_file(sender, &log_path, logfile, tail_len).await {

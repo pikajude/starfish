@@ -2188,6 +2188,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "tempfile",
+ "tokio",
  "vergen",
 ]
 
