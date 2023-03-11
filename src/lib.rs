@@ -8,11 +8,12 @@ use sqlx::{Executor, FromRow, Postgres};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-// pub mod logger;
-// mod util;
-// pub use util::*;
-// mod pidfile;
-// pub use pidfile::*;
+mod config;
+mod logger;
+mod pidfile;
+pub use self::config::load_config;
+pub use logger::Logger;
+pub use pidfile::*;
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct Build {
@@ -109,7 +110,7 @@ pub enum BuildStatus {
   Canceled,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct WorkerConfig {
   pub log_path: PathBuf,
   pub scm_path: PathBuf,
@@ -123,6 +124,10 @@ pub struct WorkerConfig {
   pub shell: String,
   // should match the format accepted by the `--builders` option to nix
   pub builders: Vec<String>,
+
+  pub database_url: String,
+  pub listen_address: String,
+  pub listen_port: u16,
 }
 
 impl WorkerConfig {

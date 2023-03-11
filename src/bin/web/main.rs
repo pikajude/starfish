@@ -1,22 +1,15 @@
 #![feature(try_blocks)]
 
+use std::net::{IpAddr, SocketAddr};
+
 use actix_web::http::header::Accept;
 use actix_web::web::{self, Json};
 use actix_web::{get, guard, App, HttpResponse, HttpServer, Responder};
 use askama::Template;
 use sqlx::PgPool;
-use starfish::{Build, WorkerConfig};
+use starfish::{BoxDynError, Build};
 
 mod tail;
-
-mod config {
-  use serde::Deserialize;
-
-  #[derive(Deserialize, Debug)]
-  pub struct StarfishConfig {
-    pub database_url: String,
-  }
-}
 
 fn wrap<T, E: std::error::Error + 'static>(thing: Result<T, E>) -> actix_web::Result<T> {
   thing.map_err(|e| actix_web::error::ErrorInternalServerError(e))
@@ -79,16 +72,14 @@ async fn get_build(db: web::Data<PgPool>, id: web::Path<i32>) -> actix_web::Resu
 }
 
 #[actix_web::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), BoxDynError> {
   env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-  let cfg_ = ::config::Config::builder()
-    .add_source(::config::Environment::default())
-    .build()?;
-
-  let cfg = cfg_.try_deserialize::<config::StarfishConfig>()?;
+  let cfg = starfish::load_config()?;
 
   let pg = PgPool::connect(&cfg.database_url).await?;
+
+  let listen_addr = SocketAddr::from((cfg.listen_address.parse::<IpAddr>()?, cfg.listen_port));
 
   Ok(
     HttpServer::new(move || {
@@ -106,10 +97,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           web::get().guard(content_type_guard("text/html")).to(index),
         )
         .app_data(web::Data::new(pg.clone()))
-        .app_data(web::Data::new(WorkerConfig::default()))
+        .app_data(web::Data::new(cfg.clone()))
         .wrap(actix_web::middleware::Logger::default())
     })
-    .bind(("127.0.0.1", 8000))?
+    .bind(listen_addr)?
     .run()
     .await?,
   )
