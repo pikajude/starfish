@@ -5,12 +5,12 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.66"
-askama = "0.11.1"
-base64 = "0.13.1"
+askama = "0.12.0"
+base64 = "0.21.0"
 inotify = "0.10.0"
 itertools = "0.10.5"
 libc = "0.2.136"
-nix = "0.25.0"
+nix = "0.26.2"
 rust-crypto = "0.2.36"
 tempfile = "3.3.0"
 actix-web = "4.3.1"
@@ -26,7 +26,7 @@ log = "0.4.17"
 tokio = "1.26.0"
 
 [dependencies.sqlx]
-version = "0.5.13"
+version = "0.6.2"
 features = ["chrono", "offline", "postgres", "runtime-actix-rustls"]
 
 [dependencies.chrono]

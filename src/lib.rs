@@ -6,13 +6,13 @@ use serde::{Deserialize, Serialize};
 pub use sqlx::error::BoxDynError;
 use sqlx::{Executor, FromRow, Postgres};
 use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
+use std::str::FromStr;
 
-mod config;
-mod logger;
+pub mod config;
+pub mod logger;
 mod pidfile;
-pub use self::config::load_config;
-pub use logger::Logger;
 pub use pidfile::*;
 
 #[derive(Debug, Serialize, FromRow)]
@@ -74,7 +74,9 @@ impl Build {
       inputs
         .into_iter()
         .map(|i| InputOutputs {
-          outputs: outputs_group.remove(&i.id).map_or(vec![], |x| x.collect()),
+          outputs: outputs_group
+            .remove(&i.id)
+            .map_or(vec![], std::iter::Iterator::collect),
           input: i,
         })
         .collect::<Vec<_>>(),
@@ -132,6 +134,13 @@ pub struct WorkerConfig {
 
 impl WorkerConfig {
   pub fn logfile(&self, id: i32) -> PathBuf {
-    self.log_path.join(format!("{}.log", id))
+    self.log_path.join(format!("{id}.log"))
+  }
+
+  pub fn listen_addr(&self) -> Result<SocketAddr, <IpAddr as FromStr>::Err> {
+    Ok(SocketAddr::from((
+      self.listen_address.parse::<IpAddr>()?,
+      self.listen_port,
+    )))
   }
 }

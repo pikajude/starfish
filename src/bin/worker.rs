@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use askama::Template;
+use base64::Engine;
 use chrono::Utc;
 use crypto::digest::Digest;
 use crypto::sha1::Sha1;
@@ -19,7 +20,8 @@ use nix::sys::statvfs::{statvfs, Statvfs};
 use sqlx::migrate::Migrator;
 use sqlx::postgres::PgListener;
 use sqlx::PgPool;
-use starfish::{Build, BuildStatus, Input, Logger, Pidfile, WorkerConfig};
+use starfish::logger::Logger;
+use starfish::{Build, BuildStatus, Input, Pidfile, WorkerConfig};
 use tempfile::TempDir;
 use tokio::task::JoinHandle;
 
@@ -88,7 +90,7 @@ impl<'a> Worker<'a> {
       .await?;
 
       // TODO: we really should keep old logs
-      let log_filepath = self.cfg.log_path.join(format!("{}.log", build_id));
+      let log_filepath = self.cfg.log_path.join(format!("{build_id}.log"));
       if log_filepath.exists() {
         let _ = File::create(log_filepath)?;
       }
@@ -109,14 +111,11 @@ impl<'a> Worker<'a> {
     )
     .fetch_optional(self.db)
     .await?;
-    let build_info = match build_info {
-      Some(r) => r,
-      None => {
-        info!("build {} has gone missing, doing nothing", build_id);
-        return Ok(());
-      }
+    let Some(r) = build_info else {
+      info!("build {} has gone missing, doing nothing", build_id);
+      return Ok(());
     };
-    self.build_impl(build_info).await
+    self.build_impl(r).await
   }
 
   async fn build_impl(&mut self, mut build_info: Build) -> Result<()> {
@@ -176,7 +175,9 @@ impl<'a> Worker<'a> {
     }
 
     let mut ssh_key_file = tempfile::NamedTempFile::new()?;
-    ssh_key_file.write_all(&base64::decode(&self.cfg.ssh_private_key)?)?;
+    ssh_key_file.write_all(
+      &base64::engine::general_purpose::STANDARD_NO_PAD.decode(&self.cfg.ssh_private_key)?,
+    )?;
 
     let git_ssh_cmd = format!(
       "ssh -i {} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
@@ -468,7 +469,7 @@ struct NixConf<'a> {
 async fn main() -> anyhow::Result<()> {
   env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-  let cfg = starfish::load_config()?;
+  let cfg = starfish::config::load()?;
   let pool = PgPool::connect(&cfg.database_url).await?;
 
   let migrator = Migrator::new(Path::new(concat!(
