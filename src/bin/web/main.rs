@@ -130,7 +130,7 @@ async fn get_build_raw(cfg: web::Data<WorkerConfig>, id: web::Path<i32>) -> Opti
   NamedFile::open_async(cfg.logfile(*id))
     .await
     .ok()
-    .map(|x| x.set_content_type(mime::TEXT_PLAIN_UTF_8))
+    .map(|x| x.set_content_type(mime::TEXT_PLAIN))
 }
 
 #[put("/build/{id}/restart")]

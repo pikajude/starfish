@@ -7,6 +7,7 @@ use actix_web::{get, web, Responder};
 use actix_web_lab::sse;
 use futures_util::StreamExt;
 use inotify::{EventMask, Inotify, WatchMask};
+use log::info;
 use serde::{Deserialize, Serialize};
 use starfish::{BoxDynError, WorkerConfig};
 
@@ -30,7 +31,7 @@ pub async fn get_build_tail(
 
   let jh = actix_web::rt::spawn(async move {
     if let Err(e) = tail_the_file(sender, &log_path, logfile, tail_len).await {
-      log::info!("client thread exited: {:?}", e);
+      info!("client thread exited: {:?}", e);
     }
   });
   std::mem::forget(jh);
@@ -43,7 +44,7 @@ async fn tail_the_file(
   log_path: &Path,
   mut logfile: File,
   tail_len: usize,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), BoxDynError> {
   let tailhead = tailme(&mut logfile, tail_len, b'\n')?;
 
   #[derive(Serialize)]
