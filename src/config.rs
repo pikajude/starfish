@@ -2,7 +2,7 @@ use ::config::{Config, Environment, File, FileFormat};
 
 use crate::WorkerConfig;
 
-pub fn load_config() -> Result<WorkerConfig, ::config::ConfigError> {
+pub fn load() -> Result<WorkerConfig, ::config::ConfigError> {
   let run_mode = std::env::var("RUN_MODE").unwrap_or_else(|_| "development".into());
 
   let cfg_ = Config::builder()

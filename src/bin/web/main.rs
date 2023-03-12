@@ -1,14 +1,13 @@
 #![feature(try_blocks)]
 
-use std::net::{IpAddr, SocketAddr};
-
+use actix_files::{Files, NamedFile};
 use actix_web::http::header::Accept;
-use actix_web::web::{self, Json};
-use actix_web::{get, guard, put, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, guard, put, web, App, HttpResponse, HttpServer, Responder};
 use askama::Template;
 use serde::Deserialize;
+use serde_json::json;
 use sqlx::PgPool;
-use starfish::{BoxDynError, Build};
+use starfish::{BoxDynError, Build, WorkerConfig};
 
 mod tail;
 
@@ -54,7 +53,7 @@ async fn index() -> impl Responder {
 
 #[get("/builds")]
 async fn get_builds(db: web::Data<PgPool>) -> actix_web::Result<impl Responder> {
-  Ok(Json(wrap(
+  Ok(web::Json(wrap(
     sqlx::query_as!(
       Build,
       "SELECT id, origin, created_at, error_msg, finished_at, rev, status as \"status: _\" FROM \
@@ -68,7 +67,7 @@ async fn get_builds(db: web::Data<PgPool>) -> actix_web::Result<impl Responder> 
 #[put("build")]
 async fn put_build(
   db: web::Data<PgPool>,
-  build: Json<BuildPlsNew>,
+  build: web::Json<BuildPlsNew>,
 ) -> actix_web::Result<impl Responder> {
   let new_build = wrap(
     sqlx::query_as!(
@@ -112,44 +111,73 @@ async fn put_build(
     .await,
   )?;
 
-  Ok(Json(new_build))
+  Ok(web::Json(new_build))
 }
 
 #[get("/build/{id}")]
 async fn get_build(db: web::Data<PgPool>, id: web::Path<i32>) -> actix_web::Result<impl Responder> {
-  let build = match wrap(Build::get(*id, &**db).await)? {
-    Some(b) => b,
-    None => return Ok(None),
+  let Some(build) = wrap(Build::get(*id, &**db).await)? else {
+    return Ok(None)
   };
 
   let inputs = wrap(build.get_inputs_and_outputs(&**db).await)?;
 
-  Ok(Some(Json(
-    serde_json::json!({ "build": build, "inputs": inputs }),
-  )))
+  Ok(Some(web::Json(json!({ "build": build, "inputs": inputs }))))
+}
+
+#[get("/build/{id}/raw")]
+async fn get_build_raw(cfg: web::Data<WorkerConfig>, id: web::Path<i32>) -> Option<NamedFile> {
+  NamedFile::open_async(cfg.logfile(*id))
+    .await
+    .ok()
+    .map(|x| x.set_content_type(mime::TEXT_PLAIN_UTF_8))
+}
+
+#[put("/build/{id}/restart")]
+async fn put_build_restart(
+  db: web::Data<PgPool>,
+  id: web::Path<i32>,
+) -> actix_web::Result<impl Responder> {
+  wrap(
+    sqlx::query!(
+      "SELECT pg_notify($1, $2)",
+      "build_restarted",
+      id.to_string()
+    )
+    .execute(&**db)
+    .await,
+  )?;
+
+  Ok(web::Json(json!({"success": true})))
 }
 
 #[actix_web::main]
 async fn main() -> Result<(), BoxDynError> {
   env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-  let cfg = starfish::load_config()?;
+  let cfg = starfish::config::load()?;
 
   let pg = PgPool::connect(&cfg.database_url).await?;
 
-  let listen_addr = SocketAddr::from((cfg.listen_address.parse::<IpAddr>()?, cfg.listen_port));
+  let listen_addr = cfg.listen_addr()?;
 
   Ok(
     HttpServer::new(move || {
       App::new()
-        .service(actix_files::Files::new("/static", "dist").show_files_listing())
+        .service(Files::new("/static", "dist").show_files_listing())
         .service(
           web::scope("/api")
             .guard(content_type_guard("application/json"))
             .service(get_builds)
-            .service(get_build),
+            .service(get_build)
+            .service(put_build)
+            .service(put_build_restart),
         )
-        .service(web::scope("/api").service(tail::get_build_tail))
+        .service(
+          web::scope("/api")
+            .service(tail::get_build_tail)
+            .service(get_build_raw),
+        )
         .route(
           "/{_:.*}",
           web::get().guard(content_type_guard("text/html")).to(index),

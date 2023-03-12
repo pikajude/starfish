@@ -94,16 +94,17 @@ async fn tail_the_file(
 
 // it may not look like much, but it's honest work (copied from GNU tail)
 fn tailme(fd: &mut File, mut n_lines: usize, sep: u8) -> std::io::Result<Vec<u8>> {
-  let end_pos = fd.seek(SeekFrom::End(0))?;
-  let start_pos = 0;
-
   const BUFSIZE: usize = 1024;
-  let mut buffer = [0u8; BUFSIZE];
-  let mut pos = end_pos;
 
   if n_lines == 0 {
     return Ok(vec![]);
   }
+
+  let end_pos = fd.seek(SeekFrom::End(0))?;
+  let start_pos = 0;
+
+  let mut buffer = [0u8; BUFSIZE];
+  let mut pos = end_pos;
 
   let mut bytes_read = ((pos - start_pos) as usize) % BUFSIZE;
   if bytes_read == 0 {
