@@ -36,7 +36,7 @@ pub async fn get_build_tail(
   });
   std::mem::forget(jh);
 
-  Ok(sse_stream.with_retry_duration(std::time::Duration::from_secs(10)))
+  Ok(sse_stream)
 }
 
 async fn tail_the_file(

@@ -173,11 +173,8 @@ async fn main() -> Result<(), BoxDynError> {
             .service(put_build)
             .service(put_build_restart),
         )
-        .service(
-          web::scope("/api")
-            .service(tail::get_build_tail)
-            .service(get_build_raw),
-        )
+        .service(web::scope("/api").service(tail::get_build_tail))
+        .service(get_build_raw)
         .route(
           "/{_:.*}",
           web::get().guard(content_type_guard("text/html")).to(index),

@@ -8,7 +8,11 @@ pub fn load() -> Result<WorkerConfig, ::config::ConfigError> {
   let cfg_ = Config::builder()
     .add_source(File::new("config/default", FileFormat::Toml))
     .add_source(File::new(&format!("config/{run_mode}"), FileFormat::Toml))
-    .add_source(Environment::with_prefix("starfish"))
+    .add_source(
+      Environment::with_prefix("starfish")
+        .try_parsing(true)
+        .list_separator(";"),
+    )
     .build()?;
 
   cfg_.try_deserialize()

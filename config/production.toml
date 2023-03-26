@@ -1,4 +1,4 @@
-lockfile = "/var/run/starfish.pid"
+lockfile = "/var/run/starfish/pid"
 log_path = "/var/lib/starfish/logs"
 scm_path = "/var/lib/starfish/scm"
 cache_bucket = "eu-dfinity-nix-cache-2"

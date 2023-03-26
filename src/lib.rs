@@ -1,14 +1,15 @@
 #![feature(extern_types)]
 
+use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
+use std::path::PathBuf;
+use std::str::FromStr;
+
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 pub use sqlx::error::BoxDynError;
 use sqlx::{Executor, FromRow, Postgres};
-use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
-use std::path::PathBuf;
-use std::str::FromStr;
 
 pub mod config;
 pub mod logger;
@@ -113,17 +114,22 @@ pub enum BuildStatus {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct WorkerSecrets {
+  pub aws_access_key: String,
+  pub aws_secret_key: String,
+  pub git_ssh_key_path: Option<PathBuf>,
+  pub nix_signing_key: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct WorkerConfig {
   pub log_path: PathBuf,
   pub scm_path: PathBuf,
   pub cache_bucket: String,
   pub s3_region: String,
   pub lockfile: PathBuf,
-  pub signing_key: String,
-  pub aws_access_key: String,
-  pub aws_secret_key: String,
-  pub ssh_private_key: String,
   pub shell: String,
+  pub secrets: WorkerSecrets,
   // should match the format accepted by the `--builders` option to nix
   pub builders: Vec<String>,
 

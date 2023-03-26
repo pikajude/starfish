@@ -1,17 +1,4 @@
 s3_region = "eu-central-1"
 
-builders = [
-  "ci@hydra-bare-metal-builder-linux-supermicro-1.dfinity.systems x86_64-linux @@ 32 2 kvm,nixos-test,big-parallel",
-  "ci@hydra-bare-metal-builder-linux-poweredge-r6525-1.dfinity.systems x86_64-linux @@ 32 2 kvm,nixos-test,big-parallel",
-  "ci@hydra-bare-metal-builder-linux-poweredge-r6525-4.dfinity.systems x86_64-linux @@ 32 2 kvm,nixos-test,big-parallel",
-  "ci@hydra-bare-metal-builder-linux-dell-1.dfinity.systems x86_64-linux @@ 8 1 kvm,nixos-test,big-parallel",
-  "ci@eu-hydra-builder-0.dfinity.systems x86_64-linux @@ 6 1 big-parallel",
-  "dfinity@zh-hydra-builder-darwin-4.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
-  "dfinity@zh-hydra-builder-darwin-5.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
-  "dfinity@zh-hydra-builder-darwin-6.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
-  "dfinity@zh-hydra-builder-darwin-7.dfinity.systems x86_64-darwin @@ 4 1 big-parallel",
-  "dfinity@zh-hydra-builder-darwin-8.dfinity.systems x86_64-darwin @@ 4 1 big-parallel"
-]
-
 listen_address = "127.0.0.1"
 listen_port = 8000
