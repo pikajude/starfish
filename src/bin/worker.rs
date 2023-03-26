@@ -9,12 +9,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use askama::Template;
-use base64::Engine;
 use chrono::Utc;
 use crypto::digest::Digest;
 use crypto::sha1::Sha1;
 use futures_util::StreamExt;
-use itertools::Itertools;
 use log::info;
 use nix::sys::statvfs::{statvfs, Statvfs};
 use sqlx::migrate::Migrator;
@@ -49,11 +47,15 @@ impl<'a> Worker<'a> {
 
   async fn run(mut self) -> Result<()> {
     info!("checking for old unfinished builds");
+    struct Record {
+      id: i32,
+    }
     // TODO: this only starts builds that never got picked up by the worker. it
     // should restart builds that started running but got reaped or OOM'd or
     // whatever. but that logic is a lot harder.
-    let mut unbuilt_builds = sqlx::query!(
-      r#"SELECT id, status as "status: BuildStatus" FROM builds WHERE status IN ($1,$2,$3)"#,
+    let mut unbuilt_builds = sqlx::query_as!(
+      Record,
+      r#"SELECT id FROM builds WHERE status IN ($1,$2,$3)"#,
       BuildStatus::Queued as _,
       BuildStatus::Building as _,
       BuildStatus::Uploading as _
@@ -174,14 +176,14 @@ impl<'a> Worker<'a> {
       }
     }
 
-    let mut ssh_key_file = tempfile::NamedTempFile::new()?;
-    ssh_key_file.write_all(
-      &base64::engine::general_purpose::STANDARD_NO_PAD.decode(&self.cfg.ssh_private_key)?,
-    )?;
-
-    let git_ssh_cmd = format!(
-      "ssh -i {} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
-      ssh_key_file.path().display()
+    let git_ssh_cmd = self.cfg.secrets.git_ssh_key_path.as_ref().map_or_else(
+      || "ssh".to_string(),
+      |k| {
+        format!(
+          "ssh -i {} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
+          k.display()
+        )
+      },
     );
 
     if !logger
@@ -283,7 +285,7 @@ impl<'a> Worker<'a> {
     let jh = tokio::spawn(async move {
       let build_err: Result<()> = try {
         let mut signing_key_path = tempfile::NamedTempFile::new()?;
-        write!(signing_key_path, "{}", &cfg.signing_key)?;
+        write!(signing_key_path, "{}", &cfg.secrets.nix_signing_key)?;
 
         let cache_uri = format!(
           "s3://{bucket}?region={region}&secret-key={key_path}&write-nar-listing=1&\
@@ -301,8 +303,8 @@ impl<'a> Worker<'a> {
         let post_build_path = nix_superconf_dir.path().join("post-build.sh");
         let mut post_build = File::create(&post_build_path)?;
         let post_build_sh = PostBuildSh {
-          key: &cfg.aws_access_key,
-          secret: &cfg.aws_secret_key,
+          key: &cfg.secrets.aws_access_key,
+          secret: &cfg.secrets.aws_secret_key,
           cache_uri: &cache_uri,
         };
         write!(post_build, "{}", post_build_sh.render().unwrap())?;
@@ -313,15 +315,10 @@ impl<'a> Worker<'a> {
         std::fs::create_dir(nix_superconf_dir.path().join("nix"))?;
         let mut nix_conf = File::create(nix_superconf_dir.path().join("nix").join("nix.conf"))?;
 
-        let mut builders_with_keys = cfg
-          .builders
-          .iter()
-          .map(|b| b.replace("@@", &ssh_key_file.path().display().to_string()));
-
         let nix_template = NixConf {
           min_free_bytes: min_free,
           max_free_bytes: max_free,
-          builders: builders_with_keys.join("; "),
+          builders: cfg.builders.join("; "),
           post_build_hook: post_build_path.display(),
         };
 
@@ -416,9 +413,6 @@ impl<'a> Worker<'a> {
         .await
         .expect("unable to update build status, everything is broken");
       }
-
-      // move the file into the closure so it doesn't get dropped early
-      drop(ssh_key_file);
     });
     self.jobs.insert(bid, jh);
     info!("spawned build");

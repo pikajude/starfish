@@ -2164,7 +2164,6 @@ dependencies = [
  "actix-web-lab",
  "anyhow",
  "askama",
- "base64 0.21.0",
  "chrono",
  "config",
  "env_logger",
