@@ -22,14 +22,11 @@ fn wrap<T, E: std::error::Error + 'static>(thing: Result<T, E>) -> actix_web::Re
   thing.map_err(|e| actix_web::error::ErrorInternalServerError(e))
 }
 
-fn content_type_guard<E>(ty: E) -> impl guard::Guard
-where
-  mime::Mime: PartialEq<E>,
-{
+fn content_type_guard<E: PartialEq<mime::Mime>>(ty: E) -> impl guard::Guard {
   guard::fn_guard(move |ctx| {
     ctx
       .header::<Accept>()
-      .map_or(false, |h| h.preference() == ty)
+      .map_or(false, |h| ty == h.preference())
   })
 }
 
@@ -167,7 +164,7 @@ async fn main() -> Result<(), BoxDynError> {
         .service(Files::new("/static", "dist").show_files_listing())
         .service(
           web::scope("/api")
-            .guard(content_type_guard("application/json"))
+            .guard(content_type_guard(mime::APPLICATION_JSON))
             .service(get_builds)
             .service(get_build)
             .service(put_build)
@@ -177,7 +174,9 @@ async fn main() -> Result<(), BoxDynError> {
         .service(get_build_raw)
         .route(
           "/{_:.*}",
-          web::get().guard(content_type_guard("text/html")).to(index),
+          web::get()
+            .guard(content_type_guard(mime::TEXT_HTML))
+            .to(index),
         )
         .app_data(web::Data::new(pg.clone()))
         .app_data(web::Data::new(cfg.clone()))
