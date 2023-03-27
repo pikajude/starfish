@@ -40,8 +40,8 @@ async fn index() -> impl Responder {
 
   HttpResponse::Ok().content_type(mime::TEXT_HTML_UTF_8).body(
     IndexPage {
-      version: env!("VERGEN_GIT_SEMVER"),
       sha: env!("VERGEN_GIT_SHA"),
+      version: env!("CARGO_PKG_VERSION"),
     }
     .render()
     .unwrap(),

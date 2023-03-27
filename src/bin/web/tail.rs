@@ -59,7 +59,7 @@ async fn tail_the_file(
     ($e:expr) => {
       sender
         .send(sse::Event::Data(sse::Data::new_json(&$e).unwrap()))
-        .await?;
+        .await?
     };
   }
 

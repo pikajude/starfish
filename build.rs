@@ -3,5 +3,9 @@ fn main() {
     .statik(true)
     .probe("libbsd")
     .unwrap();
-  vergen::vergen(vergen::Config::default()).unwrap();
+  vergen::EmitBuilder::builder()
+    .git_sha(false)
+    .fail_on_error()
+    .emit()
+    .unwrap();
 }
