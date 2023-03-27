@@ -7,34 +7,35 @@ edition = "2018"
 actix-files = "0.6.2"
 actix-web-lab = "0.19.1"
 actix-web = "4.3.1"
-anyhow = "1.0.66"
+anyhow = "1.0.70"
 askama = "0.12.0"
 config = "0.13.3"
 env_logger = "0.10.0"
-futures-util = "0.3.26"
+futures-util = "0.3.27"
 inotify = "0.10.0"
 itertools = "0.10.5"
-libc = "0.2.136"
+libc = "0.2.140"
 log = "0.4.17"
-mime = "0.3.16"
+mime = "0.3.17"
 nix = "0.26.2"
 rust-crypto = "0.2.36"
-serde = "1.0.154"
-serde_json = "1.0.94"
-tempfile = "3.3.0"
-tokio = "1.26.0"
+serde = "1.0.158"
+serde_json = "1.0.95"
+tempfile = "3.4.0"
+tokio = "1.27.0"
+vergen = "8.0.0"
 
 [dependencies.sqlx]
-version = "0.6.2"
+version = "0.6.3"
 features = ["chrono", "offline", "postgres", "runtime-actix-rustls"]
 
 [dependencies.chrono]
-version = "0.4.22"
+version = "0.4.24"
 features = ["serde"]
 
 [build-dependencies]
-pkg-config = "0.3.25"
-vergen = "7.4.2"
+pkg-config = "0.3.26"
+vergen = { version = "8.0.0", features = ["git", "git2"] }
 
 [profile.release]
 debug = true

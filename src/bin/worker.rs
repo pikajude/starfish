@@ -47,14 +47,10 @@ impl<'a> Worker<'a> {
 
   async fn run(mut self) -> Result<()> {
     info!("checking for old unfinished builds");
-    struct Record {
-      id: i32,
-    }
     // TODO: this only starts builds that never got picked up by the worker. it
     // should restart builds that started running but got reaped or OOM'd or
     // whatever. but that logic is a lot harder.
-    let mut unbuilt_builds = sqlx::query_as!(
-      Record,
+    let mut unbuilt_builds = sqlx::query!(
       r#"SELECT id FROM builds WHERE status IN ($1,$2,$3)"#,
       BuildStatus::Queued as _,
       BuildStatus::Building as _,
@@ -63,8 +59,8 @@ impl<'a> Worker<'a> {
     .fetch(self.db);
 
     // TODO: rewrite this with try_for_each() or something (the types are annoying)
-    while let Some(x) = unbuilt_builds.next().await {
-      self.handle("build_restarted", x?.id).await?;
+    while let Some(x) = unbuilt_builds.next().await.transpose()? {
+      self.handle("build_restarted", x.id).await?;
     }
 
     info!("waiting for build notifications");
@@ -439,7 +435,7 @@ fn guess_build_command(input_path: &str) -> Command {
 
 #[inline]
 fn is_commit_hash(h: &str) -> bool {
-  h.len() == 40 && h.chars().all(|c| c.is_ascii_hexdigit())
+  h.len() == 40 && h.bytes().all(|c| c.is_ascii_hexdigit())
 }
 
 #[derive(Template)]
