@@ -1,0 +1,17 @@
+[package]
+name = "starfish-common"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = { version = "0.4.26", features = ["serde"] }
+config = "0.13.3"
+itertools = "0.11.0"
+serde = { version = "1.0.183", features = ["derive"] }
+sqlx = { version = "0.7.1", features = ["chrono", "postgres", "runtime-tokio"] }
+
+[build-dependencies]
+pkg-config = "0.3.27"
+vergen = { version = "8.2.4", features = ["git", "git2"] }
