@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+pub use sqlx::error::BoxDynError;
 use sqlx::{Executor, FromRow, Postgres};
 
 #[derive(Debug, Serialize, FromRow)]
@@ -104,21 +105,24 @@ pub enum BuildStatus {
 
 pub static STARFISH_VERSION: &str = env!("VERGEN_GIT_SHA");
 
-pub fn load_config<T: serde::de::DeserializeOwned>(
+pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
   cfg_path: &str,
 ) -> Result<T, config::ConfigError> {
   use config::{Config, Environment, File, FileFormat};
 
-  let run_mode = std::env::var("RUN_MODE").unwrap_or_else(|_| "development".into());
+  let run_mode = std::env::var("STARFISH_RUN_MODE").unwrap_or_else(|_| "development".into());
 
   let cfg_ = Config::builder()
-    .add_source(File::new(cfg_path, FileFormat::Toml))
+    .add_source(File::new(&format!("{cfg_path}/default"), FileFormat::Toml))
     .add_source(File::new(
-      &format!("{cfg_path}.{run_mode}"),
+      &format!("{cfg_path}/{run_mode}"),
       FileFormat::Toml,
     ))
     .add_source(Environment::with_prefix("starfish"))
     .build()?;
 
-  cfg_.try_deserialize()
+  cfg_.try_deserialize().map(|x| {
+    log::debug!("Loaded configuration: {:#?}", x);
+    x
+  })
 }
