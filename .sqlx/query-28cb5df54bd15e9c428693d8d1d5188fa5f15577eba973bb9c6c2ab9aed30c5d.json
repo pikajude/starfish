@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO inputs (build_id, path) SELECT $1, * FROM UNNEST($2::text[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "28cb5df54bd15e9c428693d8d1d5188fa5f15577eba973bb9c6c2ab9aed30c5d"
+}
