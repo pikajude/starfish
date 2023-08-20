@@ -2281,6 +2281,7 @@ dependencies = [
 name = "starfish-common"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "config",
  "itertools 0.11.0",

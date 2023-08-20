@@ -1,1 +1,13 @@
-../web/development.toml
+lockfile = "/tmp/starfish/pid"
+log_path = "/tmp/starfish/logs"
+scm_path = "/tmp/starfish/scm"
+cache_bucket = "nix-cache-bucket-jude"
+
+build_shell = "/bin/bash"
+
+database_url = "postgres:///starfish"
+
+builders = ["localhost x86_64-linux - 16 1 big-parallel"]
+
+[publish]
+type = "none"

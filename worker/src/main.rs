@@ -7,13 +7,13 @@ mod scripts;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Display, Path};
+use std::path::Display;
 use std::process::Command;
 use std::sync::Arc;
 
 use anyhow::Result;
 use askama::Template;
-use cfg::{Config, Upload};
+use cfg::{Config, Publish};
 use chrono::Utc;
 use common::{Build, BuildStatus, Input};
 use futures_util::StreamExt;
@@ -21,7 +21,6 @@ use log::info;
 use logger::Logger;
 use nix::sys::statvfs::{statvfs, Statvfs};
 use sha1::{Digest, Sha1};
-use sqlx::migrate::Migrator;
 use sqlx::postgres::PgListener;
 use sqlx::PgPool;
 use tempfile::TempDir;
@@ -291,7 +290,7 @@ impl<'a> Worker<'a> {
 
         let post_build_path = nix_superconf_dir.path().join("post-build.sh");
         let mut post_build = File::create(&post_build_path)?;
-        Self::setup_secrets(&cfg.upload, &mut post_build)?;
+        Self::setup_secrets(&cfg.publish, &mut post_build)?;
         // the file must be closed before nix tries to execute it, otherwise weird stuff
         // happens
         drop(post_build);
@@ -403,10 +402,10 @@ impl<'a> Worker<'a> {
     Ok(())
   }
 
-  fn setup_secrets(upload_config: &Upload, build_hook: &mut File) -> Result<()> {
+  fn setup_secrets(upload_config: &Publish, build_hook: &mut File) -> Result<()> {
     match upload_config {
-      Upload::None => scripts::None.write_into(build_hook)?,
-      Upload::S3 {
+      Publish::None => scripts::None.write_into(build_hook)?,
+      Publish::S3 {
         bucket,
         region,
         access_key,
@@ -473,12 +472,7 @@ async fn main() -> anyhow::Result<()> {
   let cfg = common::load_config::<Config>("config/worker")?;
   let pool = PgPool::connect(&cfg.database_url).await?;
 
-  let migrator = Migrator::new(Path::new(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/migrations"
-  )))
-  .await?;
-  migrator.run(&pool).await?;
+  sqlx::migrate!("../migrations").run(&pool).await?;
 
   Worker::new(cfg, &pool)?.run().await
 }
