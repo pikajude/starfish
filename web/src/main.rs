@@ -1,57 +1,17 @@
 #![feature(try_blocks)]
 
-use std::net::{IpAddr, SocketAddr};
-use std::path::PathBuf;
-use std::str::FromStr;
-
 use actix_files::{Files, NamedFile};
 use actix_web::http::header::Accept;
 use actix_web::{get, guard, put, web, App, HttpResponse, HttpServer, Responder};
 use askama::Template;
+use cfg::Config;
 use common::{BoxDynError, Build};
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
 
+mod cfg;
 mod tail;
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct WorkerSecrets {
-  pub aws_access_key: String,
-  pub aws_secret_key: String,
-  pub git_ssh_key_path: Option<PathBuf>,
-  pub nix_signing_key: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct WorkerConfig {
-  pub log_path: PathBuf,
-  pub scm_path: PathBuf,
-  pub cache_bucket: String,
-  pub s3_region: String,
-  pub lockfile: PathBuf,
-  pub shell: String,
-  pub secrets: WorkerSecrets,
-  // should match the format accepted by the `--builders` option to nix
-  pub builders: Vec<String>,
-
-  pub database_url: String,
-  pub listen_address: String,
-  pub listen_port: u16,
-}
-
-impl WorkerConfig {
-  pub fn logfile(&self, id: i32) -> PathBuf {
-    self.log_path.join(format!("{id}.log"))
-  }
-
-  pub fn listen_addr(&self) -> Result<SocketAddr, <IpAddr as FromStr>::Err> {
-    Ok(SocketAddr::from((
-      self.listen_address.parse::<IpAddr>()?,
-      self.listen_port,
-    )))
-  }
-}
 
 #[derive(Debug, Deserialize)]
 struct BuildPlsNew {
@@ -165,7 +125,7 @@ async fn get_build(db: web::Data<PgPool>, id: web::Path<i32>) -> actix_web::Resu
 }
 
 #[get("/build/{id}/raw")]
-async fn get_build_raw(cfg: web::Data<WorkerConfig>, id: web::Path<i32>) -> Option<NamedFile> {
+async fn get_build_raw(cfg: web::Data<Config>, id: web::Path<i32>) -> Option<NamedFile> {
   NamedFile::open_async(cfg.logfile(*id))
     .await
     .ok()
@@ -194,7 +154,7 @@ async fn put_build_restart(
 async fn main() -> Result<(), BoxDynError> {
   env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-  let cfg = common::load_config::<WorkerConfig>("config/web")?;
+  let cfg = common::load_config::<Config>("config/web")?;
 
   let pg = PgPool::connect(&cfg.database_url).await?;
 
@@ -203,7 +163,7 @@ async fn main() -> Result<(), BoxDynError> {
   Ok(
     HttpServer::new(move || {
       App::new()
-        .service(Files::new("/static", "dist").show_files_listing())
+        .service(Files::new("/static", &cfg.static_root))
         .service(
           web::scope("/api")
             .guard(content_type_guard(mime::APPLICATION_JSON))

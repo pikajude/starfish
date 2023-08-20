@@ -11,7 +11,7 @@ use inotify::{EventMask, Inotify, WatchMask};
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::WorkerConfig;
+use crate::Config;
 
 #[derive(Deserialize)]
 pub struct LenSpec {
@@ -19,8 +19,8 @@ pub struct LenSpec {
 }
 
 #[get("/build/{id}/tail")]
-pub async fn get_build_tail(
-  wc: web::Data<WorkerConfig>,
+pub(crate) async fn get_build_tail(
+  wc: web::Data<Config>,
   id: web::Path<i32>,
   len: web::Query<LenSpec>,
 ) -> actix_web::Result<impl Responder> {

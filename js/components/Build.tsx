@@ -1,10 +1,10 @@
-import * as api from "../api";
-import { h, Fragment, Component, RenderableProps } from "preact";
+import { List } from "immutable";
+import { Component, Fragment, RenderableProps, h } from "preact";
 import Helmet from "preact-helmet";
 import { useCallback, useEffect, useState } from "preact/hooks";
+import * as api from "../api";
 import cx from "../style";
 import { ifn } from "../util";
-import { List } from "immutable";
 
 type BuildState =
   | { is: "ok"; s: api.GetBuild }
@@ -31,7 +31,11 @@ export default function Build({ ...props }: RenderableProps<{ id: string }>) {
     async function foo() {
       const r = await api.put(`/api/build/${props.id}/restart`, "");
       const status: { success: boolean } = await r.json();
-      alert(status.success ? "Build restarted" : "Failed to restart build");
+      if (status.success) {
+        window.location.reload();
+      } else {
+        alert("Failed to restart build");
+      }
     }
 
     foo();
@@ -106,7 +110,7 @@ class Tailer extends Component<
   handleError(_ev: Event) {
     this.setState({
       tailTail:
-        "unable to communicate with logger backend. try using the raw link (see above). if that fails, ask #eng-idx",
+        "unable to communicate with logger backend. try using the raw link (see above).",
       tailHead: List(),
     });
   }
