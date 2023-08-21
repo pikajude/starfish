@@ -29,9 +29,8 @@ RUN cargo build --release
 FROM debian:buster-slim AS web
 COPY --from=builder /src/target/release/starfish-web /bin
 COPY --from=static /src/dist /share/starfish
-ENV STARFISH_RUN_MODE=production
+ENV STARFISH_RUN_MODE=production STARFISH_CONFIG_DIR=/config
 
 FROM nixos/nix:2.15.2 AS worker
 COPY --from=builder /src/target/release/starfish-worker /bin
-RUN nix-env -f '<nixpkgs>' -iA git openssh
-ENV STARFISH_RUN_MODE=production
+ENV STARFISH_RUN_MODE=production STARFISH_CONFIG_DIR=/config
