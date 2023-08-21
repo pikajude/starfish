@@ -4,8 +4,6 @@ scm_path = "/var/lib/starfish/scm"
 
 build_shell = "/nix/var/nix/profiles/default/bin/bash"
 
-listen_address = "0.0.0.0"
-
 database_url = "postgres://starfish:starfish@postgres/starfish"
 builders = ["localhost x86_64-linux - 16 1 big-parallel"]
 
