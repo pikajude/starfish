@@ -114,8 +114,8 @@ pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
   let run_mode = std::env::var("STARFISH_RUN_MODE").unwrap_or_else(|_| "development".into());
 
   let cfg_ = Config::builder()
-    .add_source(File::new(&format!("{cfg_path}/default"), FileFormat::Toml))
-    .add_source(File::new(&format!("{cfg_path}/{run_mode}"), FileFormat::Toml).required(false))
+    .add_source(File::new(cfg_path, FileFormat::Toml))
+    .add_source(File::new(&format!("{cfg_path}.{run_mode}"), FileFormat::Toml).required(false))
     .add_source(Environment::with_prefix("starfish"))
     .build()?;
 

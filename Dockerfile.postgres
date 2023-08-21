@@ -1,2 +1,0 @@
-FROM postgres:13.4
-ENV POSTGRES_DB=starfish POSTGRES_USER=starfish POSTGRES_PASSWORD=starfish

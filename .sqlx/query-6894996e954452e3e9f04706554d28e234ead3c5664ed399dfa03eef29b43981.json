@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM outputs WHERE id in (select outputs.id from outputs inner join inputs on outputs.input_id = inputs.id where inputs.build_id = $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6894996e954452e3e9f04706554d28e234ead3c5664ed399dfa03eef29b43981"
+}

@@ -11,7 +11,7 @@ use std::path::Display;
 use std::process::Command;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use askama::Template;
 use cfg::{Config, Publish};
 use chrono::Utc;
@@ -469,8 +469,15 @@ struct NixConf<'a> {
 async fn main() -> anyhow::Result<()> {
   env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-  let cfg = common::load_config::<Config>("config/worker")?;
-  let pool = PgPool::connect(&cfg.database_url).await?;
+  let _status = Command::new("git")
+    .arg("--version")
+    .status()
+    .context("Unable to locate git. Exiting.")?;
+
+  let cfg = common::load_config::<Config>("/config/worker")?;
+  let pool = PgPool::connect(&cfg.database_url)
+    .await
+    .with_context(|| format!("Error connecting to '{}'", cfg.database_url))?;
 
   sqlx::migrate!("../migrations").run(&pool).await?;
 

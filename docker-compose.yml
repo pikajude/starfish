@@ -1,42 +1,47 @@
-version: "3"
+version: "3.8"
 
 services:
-  db:
-    image: registry.gitlab.com/dfinity-lab/infra-group/starfish/db:${TAG:-latest}
+  postgres:
+    image: postgres:latest
     stop_signal: SIGTERM
-    volumes:
-      - db:/var/lib/postgresql/data
-  webserver:
-    image: registry.gitlab.com/dfinity-lab/infra-group/starfish/webserver:${TAG:-latest}
-    links:
-      - db
     environment:
-      - ROCKET_SSH_PRIVATE_KEY
-      - ROCKET_SIGNING_KEY
-      - ROCKET_AWS_ACCESS_KEY
-      - ROCKET_AWS_SECRET_KEY
-    command: /code/target/release/web
+      POSTGRES_DB: starfish
+      POSTGRES_USER: starfish
+      POSTGRES_PASSWORD: starfish
+  web:
+    links:
+      - postgres
+    stop_signal: SIGTERM
+    build:
+      context: .
+      target: web
+    command: /bin/starfish-web
+    environment:
+      RUST_LOG: info
+      RUST_BACKTRACE: 1
+      RUST_LIB_BACKTRACE: 1
     volumes:
-      - state:/var/lib/starfish
-      - nix:/nix
+      - ./config:/config
+      - logs:/var/log/starfish
     ports:
       - "8000:8000"
   worker:
-    image: registry.gitlab.com/dfinity-lab/infra-group/starfish/worker:${TAG:-latest}
-    stop_signal: SIGTERM
     links:
-      - db
+      - postgres
+    stop_signal: SIGTERM
+    build:
+      context: .
+      target: worker
+    command: /bin/starfish-worker
     environment:
-      - ROCKET_SSH_PRIVATE_KEY
-      - ROCKET_SIGNING_KEY
-      - ROCKET_AWS_ACCESS_KEY
-      - ROCKET_AWS_SECRET_KEY
-    command: /code/target/release/worker
+      RUST_LOG: info
+      RUST_BACKTRACE: 1
+      RUST_LIB_BACKTRACE: 1
     volumes:
-      - state:/var/lib/starfish
+      - ./config:/config
       - nix:/nix
+      - logs:/var/log/starfish
 
 volumes:
-  db:
-  state:
   nix:
+  logs:
