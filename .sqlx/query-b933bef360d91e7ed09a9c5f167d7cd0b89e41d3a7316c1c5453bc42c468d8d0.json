@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE builds SET status = $2, finished_at = $3 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        {
+          "Custom": {
+            "name": "build_status",
+            "kind": {
+              "Enum": [
+                "queued",
+                "building",
+                "uploading",
+                "succeeded",
+                "failed",
+                "canceled"
+              ]
+            }
+          }
+        },
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b933bef360d91e7ed09a9c5f167d7cd0b89e41d3a7316c1c5453bc42c468d8d0"
+}

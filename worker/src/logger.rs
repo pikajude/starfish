@@ -21,17 +21,17 @@ impl Logger {
   pub fn exec(&mut self, cmd: &mut Command) -> std::io::Result<ExitStatus> {
     self.debug(cmd)?;
     cmd
+      .env("PATH", std::env::var_os("PATH").expect("PATH not set"))
       .stderr(self.fd.try_clone()?)
       .stdout(self.fd.try_clone()?)
-      .env("PATH", std::env::var_os("PATH").expect("PATH not set"))
       .status()
   }
 
   pub fn output(&mut self, cmd: &mut Command) -> std::io::Result<Output> {
     self.debug(cmd)?;
     let out = cmd
-      .stderr(self.fd.try_clone()?)
       .env("PATH", std::env::var_os("PATH").expect("PATH not set"))
+      .stderr(self.fd.try_clone()?)
       .output()?;
 
     self.fd.write_all(&out.stdout)?;

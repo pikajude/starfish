@@ -3,6 +3,7 @@
 use actix_files::{Files, NamedFile};
 use actix_web::http::header::Accept;
 use actix_web::{get, guard, put, web, App, HttpResponse, HttpServer, Responder};
+use anyhow::Context;
 use askama::Template;
 use cfg::Config;
 use common::{BoxDynError, Build};
@@ -154,9 +155,11 @@ async fn put_build_restart(
 async fn main() -> Result<(), BoxDynError> {
   env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-  let cfg = common::load_config::<Config>("config/web")?;
+  let cfg = common::load_config::<Config>("/config/web")?;
 
-  let pg = PgPool::connect(&cfg.database_url).await?;
+  let pg = PgPool::connect(&cfg.database_url)
+    .await
+    .with_context(|| format!("Error connecting to '{}'", cfg.database_url))?;
 
   let listen_addr = cfg.listen_addr()?;
 

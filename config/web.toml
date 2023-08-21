@@ -1,0 +1,5 @@
+log_path = "/tmp/starfish/logs"
+database_url = "postgres:///starfish"
+listen_address = "127.0.0.1"
+listen_port = 8000
+static_root = "dist"

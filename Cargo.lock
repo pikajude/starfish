@@ -342,6 +342,9 @@ name = "anyhow"
 version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4668cab20f66d8d020e1fbc0ebe47217433c1b6c8f2040faf858554e394ace6"
+dependencies = [
+ "backtrace",
+]
 
 [[package]]
 name = "arc-swap"
@@ -2286,7 +2289,6 @@ dependencies = [
  "config",
  "itertools 0.11.0",
  "log",
- "pkg-config",
  "serde",
  "sqlx",
  "vergen",
@@ -2299,6 +2301,7 @@ dependencies = [
  "actix-files",
  "actix-web",
  "actix-web-lab",
+ "anyhow",
  "askama",
  "env_logger",
  "futures-util",
