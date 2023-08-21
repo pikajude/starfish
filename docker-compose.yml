@@ -21,7 +21,6 @@ services:
       RUST_BACKTRACE: 1
       RUST_LIB_BACKTRACE: 1
     volumes:
-      - ./config:/config
       - logs:/var/log/starfish
     ports:
       - "8000:8000"
@@ -38,7 +37,6 @@ services:
       RUST_BACKTRACE: 1
       RUST_LIB_BACKTRACE: 1
     volumes:
-      - ./config:/config
       - nix:/nix
       - logs:/var/log/starfish
 

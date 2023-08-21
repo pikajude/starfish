@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use anyhow::Context;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -107,23 +106,21 @@ pub enum BuildStatus {
 pub static STARFISH_VERSION: &str = env!("VERGEN_GIT_SHA");
 
 pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
-  cfg_path: &str,
+  cfg_name: &str,
 ) -> anyhow::Result<T> {
   use config::{Config, Environment, File, FileFormat};
 
   let run_mode = std::env::var("STARFISH_RUN_MODE").unwrap_or_else(|_| "development".into());
+  let config_root =
+    std::env::var("STARFISH_CONFIG_DIR").unwrap_or_else(|_| format!("config/{run_mode}"));
 
   let cfg_ = Config::builder()
-    .add_source(File::new(cfg_path, FileFormat::Toml).required(false))
-    .add_source(File::new(&format!("{cfg_path}.{run_mode}"), FileFormat::Toml).required(false))
+    .add_source(File::new(&format!("{config_root}/{cfg_name}"), FileFormat::Toml).required(true))
     .add_source(Environment::with_prefix("starfish"))
     .build()?;
 
-  cfg_
-    .try_deserialize()
-    .map(|x| {
-      log::debug!("Loaded configuration: {:#?}", x);
-      x
-    })
-    .with_context(|| format!("Error loading configuration '{cfg_path}'"))
+  Ok(cfg_.try_deserialize().map(|x| {
+    log::debug!("Loaded configuration: {:#?}", x);
+    x
+  })?)
 }
