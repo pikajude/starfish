@@ -1,4 +1,5 @@
-database_url = "postgres://starfish:starfish@postgres/starfish"
-static_root = "/share/starfish"
-listen_address = "0.0.0.0"
 log_path = "/var/log/starfish"
+static_root = "/share/starfish"
+
+listen_address = "0.0.0.0"
+database_url = "postgres://starfish:starfish@postgres/starfish"

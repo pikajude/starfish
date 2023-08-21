@@ -189,7 +189,6 @@ impl<'a> Worker<'a> {
       .exec(
         Command::new("git")
           .args(["fetch", "origin"])
-          .env_clear()
           .env("GIT_SSH_COMMAND", &git_ssh_cmd)
           .current_dir(&scm_dir),
       )?
@@ -203,9 +202,7 @@ impl<'a> Worker<'a> {
       if !logger
         .exec(
           Command::new("git")
-            .args(["fetch", "origin"])
-            .arg(&build_info.rev)
-            .env_clear()
+            .args(["fetch", "origin", &build_info.rev])
             .env("GIT_SSH_COMMAND", &git_ssh_cmd)
             .current_dir(&scm_dir),
         )?
