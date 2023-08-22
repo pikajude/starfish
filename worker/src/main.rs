@@ -308,7 +308,7 @@ impl<'a> Worker<'a> {
           .exec(Command::new("cat").arg(nix_superconf_dir.path().join("nix").join("nix.conf")))?;
 
         logger.fake_exec(format!(
-          "export XDG_CONFIG_HOME={}",
+          "export HOME={}",
           nix_superconf_dir.path().display()
         ))?;
 
@@ -324,11 +324,12 @@ impl<'a> Worker<'a> {
                 .env_clear()
                 .env("NIX_BUILD_SHELL", &cfg.build_shell)
                 .env("GIT_SSH_COMMAND", &git_ssh_cmd)
-                .env("XDG_CONFIG_HOME", nix_superconf_dir.path())
+                .env("HOME", nix_superconf_dir.path())
                 .current_dir(&worktree_dir),
             )?;
 
             if !store_path.status.success() {
+              logger.log(format!("build exited with status {}", store_path.status))?;
               status!(BuildStatus::Failed, &finalizer_conn);
               return;
             }

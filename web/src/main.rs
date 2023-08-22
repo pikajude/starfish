@@ -51,7 +51,7 @@ async fn index() -> impl Responder {
   )
 }
 
-#[get("/builds")]
+#[get("builds")]
 async fn get_builds(db: web::Data<PgPool>) -> actix_web::Result<impl Responder> {
   Ok(web::Json(wrap(
     sqlx::query_as!(
@@ -114,7 +114,7 @@ async fn put_build(
   Ok(web::Json(new_build))
 }
 
-#[get("/build/{id}")]
+#[get("build/{id}")]
 async fn get_build(db: web::Data<PgPool>, id: web::Path<i32>) -> actix_web::Result<impl Responder> {
   let Some(build) = wrap(Build::get(*id, &**db).await)? else {
     return Ok(None)
@@ -125,7 +125,7 @@ async fn get_build(db: web::Data<PgPool>, id: web::Path<i32>) -> actix_web::Resu
   Ok(Some(web::Json(json!({ "build": build, "inputs": inputs }))))
 }
 
-#[get("/build/{id}/raw")]
+#[get("build/{id}/raw")]
 async fn get_build_raw(cfg: web::Data<Config>, id: web::Path<i32>) -> Option<NamedFile> {
   NamedFile::open_async(cfg.logfile(*id))
     .await
@@ -133,7 +133,7 @@ async fn get_build_raw(cfg: web::Data<Config>, id: web::Path<i32>) -> Option<Nam
     .map(|x| x.set_content_type(mime::TEXT_PLAIN))
 }
 
-#[put("/build/{id}/restart")]
+#[put("build/{id}/restart")]
 async fn put_build_restart(
   db: web::Data<PgPool>,
   id: web::Path<i32>,

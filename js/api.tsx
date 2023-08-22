@@ -15,6 +15,42 @@ export async function put(endpoint: string, body: BodyInit): Promise<Response> {
   });
 }
 
+export async function getJson<T>(endpoint: string): Promise<ApiResponse<T>> {
+  return await convertResponse<T>(await get(endpoint));
+}
+
+export async function putJson<T>(
+  endpoint: string,
+  body: BodyInit
+): Promise<ApiResponse<T>> {
+  return await convertResponse(await put(endpoint, body));
+}
+
+export type ApiResponse<T> =
+  | { is: "ok"; s: T }
+  | { is: "error"; s: { error: Error } };
+
+async function convertResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  if (response.ok) {
+    return { is: "ok", s: await response.json() };
+  }
+  try {
+    const err_body = await response.json();
+    return { is: "error", s: err_body };
+  } catch {
+    return {
+      is: "error",
+      s: {
+        error: {
+          code: response.status,
+          description: response.statusText,
+          reason: "unknown",
+        },
+      },
+    };
+  }
+}
+
 export type BuildStatus =
   | "queued"
   | "building"

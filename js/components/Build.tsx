@@ -16,12 +16,7 @@ export default function Build({ ...props }: RenderableProps<{ id: string }>) {
 
   useEffect(() => {
     async function foo() {
-      const build_json = await api.get(`/api/build/${props.id}`);
-      if (build_json.ok) {
-        setBuildState({ is: "ok", s: await build_json.json() });
-      } else {
-        setBuildState({ is: "error", s: await build_json.json() });
-      }
+      setBuildState(await api.getJson<api.GetBuild>(`/api/build/${props.id}`));
     }
 
     foo();
@@ -29,9 +24,11 @@ export default function Build({ ...props }: RenderableProps<{ id: string }>) {
 
   const restart = useCallback(() => {
     async function foo() {
-      const r = await api.put(`/api/build/${props.id}/restart`, "");
-      const status: { success: boolean } = await r.json();
-      if (status.success) {
+      const response = await api.putJson<{ success: boolean }>(
+        `/api/build/${props.id}/restart`,
+        ""
+      );
+      if (response.is == "ok" && response.s.success) {
         window.location.reload();
       } else {
         alert("Failed to restart build");
