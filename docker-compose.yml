@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: starfish
+      POSTGRES_USER: starfish
+      POSTGRES_PASSWORD: starfish
+  web:
+    links:
+      - postgres
+    build:
+      context: .
+      target: web
+    volumes:
+      - logs:/var/log/starfish
+    ports:
+      - "8000:8000"
+  worker:
+    links:
+      - postgres
+    build:
+      context: .
+      target: worker
+    volumes:
+      - logs:/var/log/starfish
+
+volumes:
+  logs:
