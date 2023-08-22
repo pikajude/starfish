@@ -121,11 +121,11 @@ impl Display for Component {
   }
 }
 
-pub static STARFISH_VERSION: &str = env!("VERGEN_GIT_SHA");
+pub static STARFISH_GIT_SHA: &str = env!("VERGEN_GIT_SHA");
 
 static CFG_DEFAULT: [&str; 2] = [
-  include_str!("../../config/web.default.toml"),
-  include_str!("../../config/worker.default.toml"),
+  include_str!("../../config/web.sample.toml"),
+  include_str!("../../config/worker.sample.toml"),
 ];
 
 pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
