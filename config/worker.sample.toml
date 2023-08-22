@@ -1,4 +1,5 @@
-# Directory containing log files for nix builds. The host directory mounted to this path should be shared between the worker and the webserver.
+# Directory containing log files for nix builds. The host directory mounted to this path
+# should be shared between the worker and the webserver.
 log_path = "/var/log/starfish"
 
 # Directory containing Git checkouts.
@@ -7,13 +8,19 @@ scm_path = "/var/lib/starfish/scm"
 # Postgres `pg_connect`-compatible URI.
 database_url = "postgres://starfish:starfish@postgres/starfish"
 
-# Uncomment and fill if you need starfish to be able to access private Git repositories. The host directory containing the key should be mounted in the container.
+# Set this option if you need starfish to be able to access private Git repositories.
+# The host directory containing the key should be mounted in the container.
 # git_ssh_key = "/path/to/private/key"
 
 # Used for Nix remote builds. For more information, see https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds
-# Must not be empty. starfish-worker runs builds with `max-jobs = 0`, which enforces that all builds are run remotely, in order to avoid resource contention that reduces performance of the web server and worker.
-# However, if you do want to use the current machine as a builder, you may specify localhost, as seen below.
-builders = ["localhost x86_64-linux - 16 1 big-parallel"]
+#
+# Must not be empty. starfish-worker runs builds with `max-jobs = 0`, which enforces that all
+# builds are run remotely, in order to avoid resource contention that reduces performance of the
+# web server and worker.
+#
+# However, if you do want to use the current machine as a builder, you may specify localhost,
+# as seen below.
+builders = ["localhost x86_64-linux - 10 1 big-parallel"]
 
 # Use Nix's installed Bash for builds. You probably don't need to change this.
 build_shell = "/nix/var/nix/profiles/default/bin/bash"
@@ -22,7 +29,9 @@ build_shell = "/nix/var/nix/profiles/default/bin/bash"
 [publish]
 type = "none"
 
-# # If specified, starfish will sign artifacts with the given key and upload them to an S3 bucket, which can then be used as a Nix binary cache.
+# If specified, starfish will sign artifacts with the given key and upload them to an
+# S3 bucket, which can then be used as a Nix binary cache.
+
 # [publish]
 # type = "s3"
 # bucket = "my-great-s3-bucket"
