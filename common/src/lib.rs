@@ -4,6 +4,7 @@ use std::path::Path;
 
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 pub use sqlx::error::BoxDynError;
 use sqlx::{Executor, FromRow, Postgres};
@@ -138,7 +139,7 @@ pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
     .with_extension("toml");
 
   if !config_path.exists() {
-    log::info!(
+    info!(
       "Configuration file {} does not exist, populating with default values",
       config_path.display()
     );
@@ -150,11 +151,26 @@ pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
 
   let cfg_ = Config::builder()
     .add_source(File::from_str(&config_contents, FileFormat::Toml))
-    .add_source(Environment::with_prefix("starfish"))
+    .add_source(
+      Environment::with_prefix("starfish")
+        .separator(".")
+        .prefix_separator("."),
+    )
     .build()?;
 
   Ok(cfg_.try_deserialize().map(|x| {
-    log::debug!("Loaded configuration: {:#?}", x);
+    debug!("Loaded configuration: {:#?}", x);
     x
   })?)
+}
+
+pub fn init_logger() {
+  env_logger::init_from_env(env_logger::Env::default().filter_or(
+    "STARFISH_LOG",
+    if cfg!(debug_assertions) {
+      "debug"
+    } else {
+      "info"
+    },
+  ));
 }
