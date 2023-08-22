@@ -1,53 +1,59 @@
-Starfish is a service that reimplements a subset of [Hydra](https://github.com/nixos/hydra). Specifically, it accepts a repo URL and git SHA and builds the paths in a nix file. This service exists because Nix path signing requires a private key on the local filesystem, which is insecure in most CI environments.
+# starfish
 
-## Hacking
+starfish is a continuous build system that uses [Nix](https://nixos.org). It is intended to be a very lightweight, easy to configure, less featured alternative to [Hydra](https://nixos.org/hydra).
 
-This project uses unstable rustc, which means if you're on stable, you will get some errors from rustfmt, because stable rustfmt doesn't have features.
+### What it does
 
-Starfish requires access to a number of secrets - an AWS key pair, an SSH key, and a Nix signing key - that aren't bundled in this repo for security reasons. The actual secrets used in production are in the [Jabberwocky repo](https://gitlab.com/dfinity-lab/infra-group/jabberwocky-harbormaster).
+starfish accepts build requests via a web interface and an API endpoint, attempts to build the given Nix expression(s), and reports whether the build succeeded. The web interface displays a live-updating build log.
 
-In development mode, if you use `direnv`, you can create a `.env` file with the following contents:
+### What it doesn't do
 
-```sh
-export ROCKET_SIGNING_KEY=...
-export ROCKET_AWS_ACCESS_KEY=...
-export ROCKET_AWS_SECRET_KEY=...
-# This is a base64-encoded key. You can use `cat my_key | openssl base64 -e -A` to get the encoded version of some key you have.
-export ROCKET_SSH_PRIVATE_KEY=...
+starfish does not handle authentication at all. Anyone with access can submit build requests. You are advised to place it behind a reverse proxy that handles authentication if you need it.
+
+starfish is push-only; it does not monitor repositories and build new commits when they are pushed, as Hydra does.
+
+starfish does not (currently) support sending build result notifications using services like Github webhooks.
+
+## Installation
+
+The easiest way to run a starfish instance is to use the prebuilt images along with Docker Compose.
+
+```yaml
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: starfish
+      POSTGRES_USER: starfish
+      POSTGRES_PASSWORD: starfish
+  web:
+    image: pikajude/starfish-web:latest
+    links:
+      - postgres
+    volumes:
+      - /path/to/shared/logs:/var/log/starfish
+      - /path/to/config/root:/config
+    ports:
+      - "8000:8000"
+  worker:
+    image: pikajude/starfish-worker:latest
+    links:
+      - postgres
+    volumes:
+      - /path/to/shared/logs:/var/log/starfish
+      - /path/to/config/root:/config
 ```
 
-(replacing the dots with the actual values).
+Note that the directory containing build logs should be shared between both containers, otherwise the web interface will be unable to live-display build logs.
 
-Starfish requires a postgres database on your system called `starfish`. One day this will be configurable. After you've created the database, do:
+## Configuration
 
-```
-foreman start
-```
+When first launched, starfish will create default configuration files if they do not already exist. See [`config/web.default.toml`](config/web.default.toml) and [`config/worker.default.toml`](config/worker.default.toml).
 
-Navigate to http://localhost:8000.
+Config values can be overridden using environment variables prefixed with `STARFISH_`. For example, setting the `STARFISH_LOG_PATH` environment variable will override the `log_path` value defined in the config file.
 
-If you want, you can run `cargo doc` to build rustdocs; foreman serves them on `localhost:8080`.
+In addition, there are environment-only config variables:
 
-### Hacking the worker
-
-The worker uses postgres notifications the same way Hydra does. To test the worker, start it up, launch psql and issue
-
-```
-notify build_queued, '18';
-```
-
-and replace `18` with the build ID. The worker prints out what it's doing to stderr.
-
-The file `sqlx-data.json` is used to build Starfish inside the docker image, where it doesn't have access to a running postgres instance. Run `cargo sqlx prepare --merged` before doing a Docker rebuild.
-
-### Hacking the webserver
-
-Starfish's frontend uses the Rocket framework. The guide for Rocket is [here](https://rocket.rs/v0.5-rc/guide/).
-
-### Docker
-
-```
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
-```
-
-If you don't specify `-f docker-compose.yml`, docker-compose will just pull the latest built images from the Gitlab registry.
+- `STARFISH_CONFIG_DIR`: Where starfish looks for config files: `web.toml` for the web server, `worker.toml` for the worker process. The default in the docker image is `/config`.

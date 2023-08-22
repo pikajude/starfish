@@ -3,7 +3,6 @@ version: "3.8"
 services:
   postgres:
     image: postgres:latest
-    stop_signal: SIGTERM
     environment:
       POSTGRES_DB: starfish
       POSTGRES_USER: starfish
@@ -11,37 +10,23 @@ services:
   web:
     links:
       - postgres
-    stop_signal: SIGTERM
     build:
       context: .
       target: web
-    command: /bin/starfish-web
-    environment:
-      RUST_LOG: info
-      RUST_BACKTRACE: 1
-      RUST_LIB_BACKTRACE: 1
     volumes:
       - logs:/var/log/starfish
-      - ./config/production:/config
+      # - ./config/production:/config
     ports:
       - "8000:8000"
   worker:
     links:
       - postgres
-    stop_signal: SIGTERM
     build:
       context: .
       target: worker
-    command: /bin/starfish-worker
-    environment:
-      RUST_LOG: info
-      RUST_BACKTRACE: 1
-      RUST_LIB_BACKTRACE: 1
     volumes:
-      - nix:/nix
       - logs:/var/log/starfish
-      - ./config/production:/config
+      # - ./config/production:/config
 
 volumes:
-  nix:
   logs:
