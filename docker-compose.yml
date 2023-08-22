@@ -15,7 +15,6 @@ services:
       target: web
     volumes:
       - logs:/var/log/starfish
-      # - ./config/production:/config
     ports:
       - "8000:8000"
   worker:
@@ -26,7 +25,6 @@ services:
       target: worker
     volumes:
       - logs:/var/log/starfish
-      # - ./config/production:/config
 
 volumes:
   logs:
