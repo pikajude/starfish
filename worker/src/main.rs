@@ -472,7 +472,7 @@ async fn main() -> anyhow::Result<()> {
     .status()
     .context("Unable to locate git. Exiting.")?;
 
-  let cfg = common::load_config::<Config>("worker")?;
+  let cfg = common::load_config::<Config>(common::Component::Worker)?;
   let pool = PgPool::connect(&cfg.database_url)
     .await
     .with_context(|| format!("Error connecting to '{}'", cfg.database_url))?;

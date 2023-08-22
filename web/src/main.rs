@@ -155,7 +155,7 @@ async fn put_build_restart(
 async fn main() -> Result<(), BoxDynError> {
   env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-  let cfg = common::load_config::<Config>("web")?;
+  let cfg = common::load_config::<Config>(common::Component::Web)?;
 
   let pg = PgPool::connect(&cfg.database_url)
     .await

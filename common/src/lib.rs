@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fmt::Display;
+use std::path::Path;
 
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
@@ -103,19 +105,51 @@ pub enum BuildStatus {
   Canceled,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Component {
+  Web = 0,
+  Worker = 1,
+}
+
+impl Display for Component {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Web => write!(f, "web"),
+      Self::Worker => write!(f, "worker"),
+    }
+  }
+}
+
 pub static STARFISH_VERSION: &str = env!("VERGEN_GIT_SHA");
 
+static CFG_DEFAULT: [&str; 2] = [
+  include_str!("../../config/web.default.toml"),
+  include_str!("../../config/worker.default.toml"),
+];
+
 pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
-  cfg_name: &str,
+  component: Component,
 ) -> anyhow::Result<T> {
   use config::{Config, Environment, File, FileFormat};
 
-  let run_mode = std::env::var("STARFISH_RUN_MODE").unwrap_or_else(|_| "development".into());
-  let config_root =
-    std::env::var("STARFISH_CONFIG_DIR").unwrap_or_else(|_| format!("config/{run_mode}"));
+  let config_root = std::env::var("STARFISH_CONFIG_DIR").unwrap_or_else(|_| "config/dev".into());
+  let config_path = Path::new(&config_root)
+    .join(component.to_string())
+    .with_extension("toml");
+
+  if !config_path.exists() {
+    log::info!(
+      "Configuration file {} does not exist, populating with default values",
+      config_path.display()
+    );
+    std::fs::create_dir_all(config_path.parent().unwrap())?;
+    std::fs::write(&config_path, CFG_DEFAULT[component as usize])?;
+  }
+
+  let config_contents = std::fs::read_to_string(&config_path)?;
 
   let cfg_ = Config::builder()
-    .add_source(File::new(&format!("{config_root}/{cfg_name}"), FileFormat::Toml).required(true))
+    .add_source(File::from_str(&config_contents, FileFormat::Toml))
     .add_source(Environment::with_prefix("starfish"))
     .build()?;
 
