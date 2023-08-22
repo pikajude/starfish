@@ -1,5 +1,5 @@
 wrap_comments = true
 tab_spaces = 2
 imports_granularity = "module"
-edition = "2018"
+edition = "2021"
 format_strings = true
