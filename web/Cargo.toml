@@ -2,7 +2,7 @@
 name = "starfish-web"
 version = "0.1.0"
 edition = "2021"
-author = "Jude Taylor <me@jude.xyz>"
+authors = ["Jude Taylor <me@jude.xyz>"]
 
 [dependencies]
 actix-files = "0.6.2"
