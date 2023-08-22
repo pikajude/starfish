@@ -50,7 +50,7 @@ Note that the directory containing build logs should be shared between both cont
 
 ## Configuration
 
-When first launched, starfish will create default configuration files if they do not already exist. See [`config/web.default.toml`](config/web.default.toml) and [`config/worker.default.toml`](config/worker.default.toml).
+When first launched, starfish will create default configuration files if they do not already exist. See [`config/web.sample.toml`](config/web.sample.toml) and [`config/worker.sample.toml`](config/worker.sample.toml).
 
 Config values can be overridden using environment variables prefixed with `STARFISH.`. Examples:
 
