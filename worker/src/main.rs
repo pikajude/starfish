@@ -1,39 +1,40 @@
 #![feature(try_blocks)]
 
+mod cfg;
+mod logger;
+mod scripts;
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Display, Path};
+use std::path::Display;
 use std::process::Command;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use askama::Template;
+use cfg::{Config, Publish};
 use chrono::Utc;
-use crypto::digest::Digest;
-use crypto::sha1::Sha1;
+use common::{Build, BuildStatus, Input};
 use futures_util::StreamExt;
 use log::info;
+use logger::Logger;
 use nix::sys::statvfs::{statvfs, Statvfs};
-use sqlx::migrate::Migrator;
+use sha1::{Digest, Sha1};
 use sqlx::postgres::PgListener;
 use sqlx::PgPool;
-use starfish::logger::Logger;
-use starfish::{Build, BuildStatus, Input, Pidfile, WorkerConfig};
 use tempfile::TempDir;
 use tokio::task::JoinHandle;
 
 struct Worker<'a> {
-  cfg: Arc<WorkerConfig>,
+  cfg: Arc<Config>,
   jobs: HashMap<i32, JoinHandle<()>>,
   fsdata: Statvfs,
   db: &'a PgPool,
-  _pidfile: Pidfile,
 }
 
 impl<'a> Worker<'a> {
-  fn new(cfg: WorkerConfig, db: &'a PgPool) -> Result<Self> {
-    let _pidfile = Pidfile::new(&cfg.lockfile);
+  fn new(cfg: Config, db: &'a PgPool) -> Result<Self> {
     let fsdata = statvfs("/nix/store")?;
 
     Ok(Self {
@@ -41,7 +42,6 @@ impl<'a> Worker<'a> {
       jobs: HashMap::new(),
       fsdata,
       db,
-      _pidfile,
     })
   }
 
@@ -128,7 +128,7 @@ impl<'a> Worker<'a> {
     let mut logger = Logger::from(File::create(&log_filepath)?);
 
     let mut s = Sha1::new();
-    s.input_str(&build_info.origin);
+    s.update(&build_info.origin);
 
     macro_rules! status {
       ($stat:expr, $executor:expr) => {
@@ -150,7 +150,10 @@ impl<'a> Worker<'a> {
     // "synchronous" (in this process, not across processes, no filesystem locking
     // or anything) and then nix-store and nix-instantiate are called in a separate
     // thread since they make up the bulk of the runtime.
-    let scm_dir = self.cfg.scm_path.join(s.result_str());
+    let scm_dir = self
+      .cfg
+      .scm_path
+      .join(base16ct::lower::encode_string(&s.finalize()));
     if !scm_dir.exists() {
       std::fs::create_dir_all(&scm_dir)?;
       logger.exec(
@@ -172,7 +175,7 @@ impl<'a> Worker<'a> {
       }
     }
 
-    let git_ssh_cmd = self.cfg.secrets.git_ssh_key_path.as_ref().map_or_else(
+    let git_ssh_cmd = self.cfg.git_ssh_key.as_ref().map_or_else(
       || "ssh".to_string(),
       |k| {
         format!(
@@ -186,7 +189,6 @@ impl<'a> Worker<'a> {
       .exec(
         Command::new("git")
           .args(["fetch", "origin"])
-          .env_clear()
           .env("GIT_SSH_COMMAND", &git_ssh_cmd)
           .current_dir(&scm_dir),
       )?
@@ -200,9 +202,7 @@ impl<'a> Worker<'a> {
       if !logger
         .exec(
           Command::new("git")
-            .args(["fetch", "origin"])
-            .arg(&build_info.rev)
-            .env_clear()
+            .args(["fetch", "origin", &build_info.rev])
             .env("GIT_SSH_COMMAND", &git_ssh_cmd)
             .current_dir(&scm_dir),
         )?
@@ -280,17 +280,6 @@ impl<'a> Worker<'a> {
 
     let jh = tokio::spawn(async move {
       let build_err: Result<()> = try {
-        let mut signing_key_path = tempfile::NamedTempFile::new()?;
-        write!(signing_key_path, "{}", &cfg.secrets.nix_signing_key)?;
-
-        let cache_uri = format!(
-          "s3://{bucket}?region={region}&secret-key={key_path}&write-nar-listing=1&\
-           ls-compression=br&log-compression=br&parallel-compression=1",
-          bucket = &cfg.cache_bucket,
-          region = &cfg.s3_region,
-          key_path = signing_key_path.path().display()
-        );
-
         // the global config in NIX_CONF_DIR is totally ignored if a user-level config
         // exists. in the docker image, that's not a problem, but while testing locally
         // it's a huge pain
@@ -298,12 +287,7 @@ impl<'a> Worker<'a> {
 
         let post_build_path = nix_superconf_dir.path().join("post-build.sh");
         let mut post_build = File::create(&post_build_path)?;
-        let post_build_sh = PostBuildSh {
-          key: &cfg.secrets.aws_access_key,
-          secret: &cfg.secrets.aws_secret_key,
-          cache_uri: &cache_uri,
-        };
-        write!(post_build, "{}", post_build_sh.render().unwrap())?;
+        Self::setup_secrets(&cfg.publish, &mut post_build)?;
         // the file must be closed before nix tries to execute it, otherwise weird stuff
         // happens
         drop(post_build);
@@ -324,7 +308,7 @@ impl<'a> Worker<'a> {
           .exec(Command::new("cat").arg(nix_superconf_dir.path().join("nix").join("nix.conf")))?;
 
         logger.fake_exec(format!(
-          "export XDG_CONFIG_HOME={}",
+          "export HOME={}",
           nix_superconf_dir.path().display()
         ))?;
 
@@ -338,13 +322,14 @@ impl<'a> Worker<'a> {
                 .args(["--argstr", "system", target_system])
                 .arg("--keep-going")
                 .env_clear()
-                .env("NIX_BUILD_SHELL", &cfg.shell)
+                .env("NIX_BUILD_SHELL", &cfg.build_shell)
                 .env("GIT_SSH_COMMAND", &git_ssh_cmd)
-                .env("XDG_CONFIG_HOME", nix_superconf_dir.path())
+                .env("HOME", nix_superconf_dir.path())
                 .current_dir(&worktree_dir),
             )?;
 
             if !store_path.status.success() {
+              logger.log(format!("build exited with status {}", store_path.status))?;
               status!(BuildStatus::Failed, &finalizer_conn);
               return;
             }
@@ -414,6 +399,37 @@ impl<'a> Worker<'a> {
     info!("spawned build");
     Ok(())
   }
+
+  fn setup_secrets(upload_config: &Publish, build_hook: &mut File) -> Result<()> {
+    match upload_config {
+      Publish::None => scripts::None.write_into(build_hook)?,
+      Publish::S3 {
+        bucket,
+        region,
+        access_key,
+        secret_key,
+        nix_signing_key,
+      } => {
+        let mut signing_key_path = tempfile::NamedTempFile::new()?;
+        write!(signing_key_path, "{nix_signing_key}")?;
+
+        let cache_uri = format!(
+          "s3://{bucket}?region={region}&secret-key={key_path}&write-nar-listing=1&\
+           ls-compression=br&log-compression=br&parallel-compression=1",
+          key_path = signing_key_path.path().display()
+        );
+
+        let post_build_script = scripts::S3 {
+          key: access_key,
+          secret: secret_key,
+          cache_uri: &cache_uri,
+        };
+
+        post_build_script.write_into(build_hook)?;
+      }
+    }
+    Ok(())
+  }
 }
 
 // best effort to figure out what command will "build" the "thing".
@@ -439,14 +455,6 @@ fn is_commit_hash(h: &str) -> bool {
 }
 
 #[derive(Template)]
-#[template(path = "post-build.sh", escape = "none")]
-struct PostBuildSh<'a> {
-  key: &'a str,
-  secret: &'a str,
-  cache_uri: &'a str,
-}
-
-#[derive(Template)]
 #[template(path = "nix.conf", escape = "none")]
 struct NixConf<'a> {
   min_free_bytes: u64,
@@ -455,19 +463,21 @@ struct NixConf<'a> {
   post_build_hook: Display<'a>,
 }
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+  common::init_logger();
 
-  let cfg = starfish::config::load()?;
-  let pool = PgPool::connect(&cfg.database_url).await?;
+  let _status = Command::new("git")
+    .arg("--version")
+    .status()
+    .context("Unable to locate git. Exiting.")?;
 
-  let migrator = Migrator::new(Path::new(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/migrations"
-  )))
-  .await?;
-  migrator.run(&pool).await?;
+  let cfg = common::load_config::<Config>(common::Component::Worker)?;
+  let pool = PgPool::connect(&cfg.database_url)
+    .await
+    .with_context(|| format!("Error connecting to '{}'", cfg.database_url))?;
+
+  sqlx::migrate!("../migrations").run(&pool).await?;
 
   Worker::new(cfg, &pool)?.run().await
 }

@@ -3,12 +3,15 @@
 use actix_files::{Files, NamedFile};
 use actix_web::http::header::Accept;
 use actix_web::{get, guard, put, web, App, HttpResponse, HttpServer, Responder};
+use anyhow::Context;
 use askama::Template;
+use cfg::Config;
+use common::{BoxDynError, Build};
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
-use starfish::{BoxDynError, Build, WorkerConfig};
 
+mod cfg;
 mod tail;
 
 #[derive(Debug, Deserialize)]
@@ -40,7 +43,7 @@ async fn index() -> impl Responder {
 
   HttpResponse::Ok().content_type(mime::TEXT_HTML_UTF_8).body(
     IndexPage {
-      sha: env!("VERGEN_GIT_SHA"),
+      sha: common::STARFISH_GIT_SHA,
       version: env!("CARGO_PKG_VERSION"),
     }
     .render()
@@ -48,7 +51,7 @@ async fn index() -> impl Responder {
   )
 }
 
-#[get("/builds")]
+#[get("builds")]
 async fn get_builds(db: web::Data<PgPool>) -> actix_web::Result<impl Responder> {
   Ok(web::Json(wrap(
     sqlx::query_as!(
@@ -111,7 +114,7 @@ async fn put_build(
   Ok(web::Json(new_build))
 }
 
-#[get("/build/{id}")]
+#[get("build/{id}")]
 async fn get_build(db: web::Data<PgPool>, id: web::Path<i32>) -> actix_web::Result<impl Responder> {
   let Some(build) = wrap(Build::get(*id, &**db).await)? else {
     return Ok(None)
@@ -122,15 +125,15 @@ async fn get_build(db: web::Data<PgPool>, id: web::Path<i32>) -> actix_web::Resu
   Ok(Some(web::Json(json!({ "build": build, "inputs": inputs }))))
 }
 
-#[get("/build/{id}/raw")]
-async fn get_build_raw(cfg: web::Data<WorkerConfig>, id: web::Path<i32>) -> Option<NamedFile> {
+#[get("build/{id}/raw")]
+async fn get_build_raw(cfg: web::Data<Config>, id: web::Path<i32>) -> Option<NamedFile> {
   NamedFile::open_async(cfg.logfile(*id))
     .await
     .ok()
     .map(|x| x.set_content_type(mime::TEXT_PLAIN))
 }
 
-#[put("/build/{id}/restart")]
+#[put("build/{id}/restart")]
 async fn put_build_restart(
   db: web::Data<PgPool>,
   id: web::Path<i32>,
@@ -150,18 +153,20 @@ async fn put_build_restart(
 
 #[actix_web::main]
 async fn main() -> Result<(), BoxDynError> {
-  env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+  common::init_logger();
 
-  let cfg = starfish::config::load()?;
+  let cfg = common::load_config::<Config>(common::Component::Web)?;
 
-  let pg = PgPool::connect(&cfg.database_url).await?;
+  let pg = PgPool::connect(&cfg.database_url)
+    .await
+    .with_context(|| format!("Error connecting to '{}'", cfg.database_url))?;
 
   let listen_addr = cfg.listen_addr()?;
 
   Ok(
     HttpServer::new(move || {
       App::new()
-        .service(Files::new("/static", "dist").show_files_listing())
+        .service(Files::new("/static", &cfg.static_root))
         .service(
           web::scope("/api")
             .guard(content_type_guard(mime::APPLICATION_JSON))

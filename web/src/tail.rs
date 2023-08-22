@@ -5,11 +5,13 @@ use std::path::Path;
 
 use actix_web::{get, web, Responder};
 use actix_web_lab::sse;
+use common::BoxDynError;
 use futures_util::StreamExt;
 use inotify::{EventMask, Inotify, WatchMask};
 use log::info;
 use serde::{Deserialize, Serialize};
-use starfish::{BoxDynError, WorkerConfig};
+
+use crate::Config;
 
 #[derive(Deserialize)]
 pub struct LenSpec {
@@ -17,8 +19,8 @@ pub struct LenSpec {
 }
 
 #[get("/build/{id}/tail")]
-pub async fn get_build_tail(
-  wc: web::Data<WorkerConfig>,
+pub(crate) async fn get_build_tail(
+  wc: web::Data<Config>,
   id: web::Path<i32>,
   len: web::Query<LenSpec>,
 ) -> actix_web::Result<impl Responder> {
@@ -65,10 +67,12 @@ async fn tail_the_file(
 
   yield_!(TailEvent::Text(String::from_utf8_lossy(&tailhead)));
 
-  let mut notifier = Inotify::init()?;
-  notifier.add_watch(log_path, WatchMask::CREATE | WatchMask::MODIFY)?;
+  let notifier = Inotify::init()?;
+  notifier
+    .watches()
+    .add(log_path, WatchMask::CREATE | WatchMask::MODIFY)?;
   let buffer = vec![0u8; 1024];
-  let mut notifs = notifier.event_stream(buffer)?;
+  let mut notifs = notifier.into_event_stream(buffer)?;
 
   while let Some(ev) = notifs.next().await {
     let event_err: Result<(), BoxDynError> = try {

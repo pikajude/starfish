@@ -1,20 +1,13 @@
-#![feature(extern_types)]
-
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::fmt::Display;
+use std::path::Path;
 
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 pub use sqlx::error::BoxDynError;
 use sqlx::{Executor, FromRow, Postgres};
-
-pub mod config;
-pub mod logger;
-mod pidfile;
-pub use pidfile::*;
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct Build {
@@ -113,40 +106,71 @@ pub enum BuildStatus {
   Canceled,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct WorkerSecrets {
-  pub aws_access_key: String,
-  pub aws_secret_key: String,
-  pub git_ssh_key_path: Option<PathBuf>,
-  pub nix_signing_key: String,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Component {
+  Web = 0,
+  Worker = 1,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct WorkerConfig {
-  pub log_path: PathBuf,
-  pub scm_path: PathBuf,
-  pub cache_bucket: String,
-  pub s3_region: String,
-  pub lockfile: PathBuf,
-  pub shell: String,
-  pub secrets: WorkerSecrets,
-  // should match the format accepted by the `--builders` option to nix
-  pub builders: Vec<String>,
-
-  pub database_url: String,
-  pub listen_address: String,
-  pub listen_port: u16,
+impl Display for Component {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Web => write!(f, "web"),
+      Self::Worker => write!(f, "worker"),
+    }
+  }
 }
 
-impl WorkerConfig {
-  pub fn logfile(&self, id: i32) -> PathBuf {
-    self.log_path.join(format!("{id}.log"))
+pub static STARFISH_GIT_SHA: &str = env!("VERGEN_GIT_SHA");
+
+static CFG_DEFAULT: [&str; 2] = [
+  include_str!("../../config/web.sample.toml"),
+  include_str!("../../config/worker.sample.toml"),
+];
+
+pub fn load_config<T: serde::de::DeserializeOwned + std::fmt::Debug>(
+  component: Component,
+) -> anyhow::Result<T> {
+  use config::{Config, Environment, File, FileFormat};
+
+  let config_root = std::env::var("STARFISH_CONFIG_DIR").unwrap_or_else(|_| "config/dev".into());
+  let config_path = Path::new(&config_root)
+    .join(component.to_string())
+    .with_extension("toml");
+
+  if !config_path.exists() {
+    info!(
+      "Configuration file {} does not exist, populating with default values",
+      config_path.display()
+    );
+    std::fs::create_dir_all(config_path.parent().unwrap())?;
+    std::fs::write(&config_path, CFG_DEFAULT[component as usize])?;
   }
 
-  pub fn listen_addr(&self) -> Result<SocketAddr, <IpAddr as FromStr>::Err> {
-    Ok(SocketAddr::from((
-      self.listen_address.parse::<IpAddr>()?,
-      self.listen_port,
-    )))
-  }
+  let config_contents = std::fs::read_to_string(&config_path)?;
+
+  let cfg_ = Config::builder()
+    .add_source(File::from_str(&config_contents, FileFormat::Toml))
+    .add_source(
+      Environment::with_prefix("starfish")
+        .separator(".")
+        .prefix_separator("."),
+    )
+    .build()?;
+
+  Ok(cfg_.try_deserialize().map(|x| {
+    debug!("Loaded configuration: {:#?}", x);
+    x
+  })?)
+}
+
+pub fn init_logger() {
+  env_logger::init_from_env(env_logger::Env::default().filter_or(
+    "STARFISH_LOG",
+    if cfg!(debug_assertions) {
+      "debug"
+    } else {
+      "info"
+    },
+  ));
 }

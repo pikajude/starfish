@@ -21,17 +21,17 @@ impl Logger {
   pub fn exec(&mut self, cmd: &mut Command) -> std::io::Result<ExitStatus> {
     self.debug(cmd)?;
     cmd
+      .env("PATH", std::env::var_os("PATH").expect("PATH not set"))
       .stderr(self.fd.try_clone()?)
       .stdout(self.fd.try_clone()?)
-      .env("PATH", std::env::var_os("PATH").expect("PATH not set"))
       .status()
   }
 
   pub fn output(&mut self, cmd: &mut Command) -> std::io::Result<Output> {
     self.debug(cmd)?;
     let out = cmd
-      .stderr(self.fd.try_clone()?)
       .env("PATH", std::env::var_os("PATH").expect("PATH not set"))
+      .stderr(self.fd.try_clone()?)
       .output()?;
 
     self.fd.write_all(&out.stdout)?;
@@ -39,8 +39,12 @@ impl Logger {
     Ok(out)
   }
 
+  pub fn log<D: Display>(&mut self, message: D) -> std::io::Result<()> {
+    writeln!(self.fd, "{message}")
+  }
+
   pub fn fake_exec<D: Display>(&mut self, cmd: D) -> std::io::Result<()> {
-    writeln!(self.fd, "$ {cmd}")
+    self.log(format!("$ {cmd}"))
   }
 
   fn debug(&mut self, cmd: &Command) -> std::io::Result<()> {
