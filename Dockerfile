@@ -25,12 +25,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
 
-
 FROM debian:buster-slim AS web
 COPY --from=builder /src/target/release/starfish-web /bin
 COPY --from=static /src/dist /share/starfish
 ENV STARFISH_RUN_MODE=production STARFISH_CONFIG_DIR=/config
 
-FROM nixos/nix:2.15.2 AS worker
+FROM nixos/nix:2.17.0 AS worker
 COPY --from=builder /src/target/release/starfish-worker /bin
 ENV STARFISH_RUN_MODE=production STARFISH_CONFIG_DIR=/config

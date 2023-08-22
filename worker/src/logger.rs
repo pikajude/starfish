@@ -39,8 +39,12 @@ impl Logger {
     Ok(out)
   }
 
+  pub fn log<D: Display>(&mut self, message: D) -> std::io::Result<()> {
+    writeln!(self.fd, "{message}")
+  }
+
   pub fn fake_exec<D: Display>(&mut self, cmd: D) -> std::io::Result<()> {
-    writeln!(self.fd, "$ {cmd}")
+    self.log(format!("$ {cmd}"))
   }
 
   fn debug(&mut self, cmd: &Command) -> std::io::Result<()> {
