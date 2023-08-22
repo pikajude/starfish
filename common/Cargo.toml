@@ -2,6 +2,7 @@
 name = "starfish-common"
 version = "0.1.0"
 edition = "2021"
+author = "Jude Taylor <me@jude.xyz>"
 
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
