@@ -153,7 +153,7 @@ async fn put_build_restart(
 
 #[actix_web::main]
 async fn main() -> Result<(), BoxDynError> {
-  env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+  common::init_logger();
 
   let cfg = common::load_config::<Config>(common::Component::Web)?;
 

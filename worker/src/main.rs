@@ -465,7 +465,7 @@ struct NixConf<'a> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+  common::init_logger();
 
   let _status = Command::new("git")
     .arg("--version")
