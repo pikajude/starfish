@@ -43,7 +43,7 @@ async fn index() -> impl Responder {
 
   HttpResponse::Ok().content_type(mime::TEXT_HTML_UTF_8).body(
     IndexPage {
-      sha: common::STARFISH_VERSION,
+      sha: common::STARFISH_GIT_SHA,
       version: env!("CARGO_PKG_VERSION"),
     }
     .render()
