@@ -1,10 +1,17 @@
-To run starfish in development mode without Docker, use
+To run starfish in development mode without Docker, you will need to install some things first:
+
+1. `nix` - see the installation instructions at https://nixos.org/download
+1. `cargo-watch` - `cargo install cargo-watch`
+2. `foreman` - use your preferred package manager
+3. Postgres - use your preferred package manager
+
+Then you need to create a local Postgres database called `starfish`.
+
+Once all these parts are in place, use:
 
 ```
 $ foreman start
 ```
-
-By default, it will try to connect to a local Postgres database called `starfish` using trust authentication. If you need to change this behavior, change the `database_url` setting in the appropriate configuration file in `config/dev`, or set the environment variable `STARFISH.DATABASE_URL`.
 
 The JS frontend uses Typescript and [Preact](https://preactjs.com/).
 

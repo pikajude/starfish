@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::PathBuf;
 
 use serde::Deserialize;
@@ -23,6 +24,8 @@ pub struct Config {
   pub git_ssh_key: Option<PathBuf>,
   // should match the format accepted by the `--builders` option to nix
   pub builders: Vec<String>,
+  #[serde(default = "default_target_platforms")]
+  pub target_platforms: Vec<Cow<'static, str>>,
 
   pub log_path: PathBuf,
   pub scm_path: PathBuf,
@@ -30,4 +33,11 @@ pub struct Config {
   pub publish: Publish,
 
   pub database_url: String,
+}
+
+fn default_target_platforms() -> Vec<Cow<'static, str>> {
+  ["x86_64-linux", "x86_64-darwin"]
+    .into_iter()
+    .map(|x| x.into())
+    .collect::<Vec<_>>()
 }

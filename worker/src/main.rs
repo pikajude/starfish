@@ -272,7 +272,7 @@ impl<'a> Worker<'a> {
     let finalizer_conn = self.db.clone();
     let cfg = Arc::clone(&self.cfg);
 
-    let filesystem_bytes = self.fsdata.blocks() * self.fsdata.fragment_size();
+    let filesystem_bytes = (self.fsdata.blocks() as libc::c_ulong) * self.fsdata.fragment_size();
     // auto GC once the disk is 85% full
     let min_free = filesystem_bytes * 15 / 100;
     // stop GC once the disk is half empty
@@ -286,11 +286,7 @@ impl<'a> Worker<'a> {
         let nix_superconf_dir = TempDir::new()?;
 
         let post_build_path = nix_superconf_dir.path().join("post-build.sh");
-        let mut post_build = File::create(&post_build_path)?;
-        Self::setup_secrets(&cfg.publish, &mut post_build)?;
-        // the file must be closed before nix tries to execute it, otherwise weird stuff
-        // happens
-        drop(post_build);
+        Self::setup_secrets(&cfg.publish, File::create(&post_build_path)?)?;
 
         std::fs::create_dir(nix_superconf_dir.path().join("nix"))?;
         let mut nix_conf = File::create(nix_superconf_dir.path().join("nix").join("nix.conf"))?;
@@ -302,7 +298,7 @@ impl<'a> Worker<'a> {
           post_build_hook: post_build_path.display(),
         };
 
-        writeln!(nix_conf, "{}", nix_template.render().unwrap())?;
+        nix_template.write_into(&mut nix_conf)?;
 
         logger
           .exec(Command::new("cat").arg(nix_superconf_dir.path().join("nix").join("nix.conf")))?;
@@ -315,7 +311,7 @@ impl<'a> Worker<'a> {
         logger.exec(Command::new("chmod").arg("+x").arg(post_build_path))?;
 
         for input in all_inputs {
-          for target_system in ["x86_64-linux", "x86_64-darwin"] {
+          for target_system in &cfg.target_platforms {
             let worktree_dir = scm_dir.join(&build_tag);
             let store_path = logger.output(
               guess_build_command(&input.path)
@@ -400,9 +396,9 @@ impl<'a> Worker<'a> {
     Ok(())
   }
 
-  fn setup_secrets(upload_config: &Publish, build_hook: &mut File) -> Result<()> {
+  fn setup_secrets(upload_config: &Publish, mut build_hook: File) -> Result<()> {
     match upload_config {
-      Publish::None => scripts::None.write_into(build_hook)?,
+      Publish::None => scripts::None.write_into(&mut build_hook)?,
       Publish::S3 {
         bucket,
         region,
@@ -425,7 +421,7 @@ impl<'a> Worker<'a> {
           cache_uri: &cache_uri,
         };
 
-        post_build_script.write_into(build_hook)?;
+        post_build_script.write_into(&mut build_hook)?;
       }
     }
     Ok(())
