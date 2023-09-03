@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
-use std::path::PathBuf;
-use std::sync::mpsc::channel;
+use std::path::Path;
 
 use actix_web::{get, web, Responder};
 use actix_web_lab::sse;
 use common::BoxDynError;
+use futures_util::StreamExt;
+use inotify::{EventMask, Inotify, WatchMask};
 use log::info;
-use notify::{recommended_watcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 
 use crate::Config;
@@ -32,7 +32,7 @@ pub(crate) async fn get_build_tail(
   let (sender, sse_stream) = sse::channel(10);
 
   let jh = actix_web::rt::spawn(async move {
-    if let Err(e) = tail_the_file(sender, log_path, logfile, tail_len).await {
+    if let Err(e) = tail_the_file(sender, &log_path, logfile, tail_len).await {
       info!("client thread exited: {:?}", e);
     }
   });
@@ -42,8 +42,8 @@ pub(crate) async fn get_build_tail(
 }
 
 async fn tail_the_file(
-  sse: sse::Sender,
-  log_path: PathBuf,
+  sender: sse::Sender,
+  log_path: &Path,
   mut logfile: File,
   tail_len: usize,
 ) -> Result<(), BoxDynError> {
@@ -59,7 +59,7 @@ async fn tail_the_file(
 
   macro_rules! yield_ {
     ($e:expr) => {
-      sse
+      sender
         .send(sse::Event::Data(sse::Data::new_json(&$e).unwrap()))
         .await?
     };
@@ -67,24 +67,23 @@ async fn tail_the_file(
 
   yield_!(TailEvent::Text(String::from_utf8_lossy(&tailhead)));
 
-  let (sender, receiver) = channel();
+  let notifier = Inotify::init()?;
+  notifier
+    .watches()
+    .add(log_path, WatchMask::CREATE | WatchMask::MODIFY)?;
+  let buffer = vec![0u8; 1024];
+  let mut notifs = notifier.into_event_stream(buffer)?;
 
-  let jh = actix_web::rt::task::spawn_blocking(move || -> anyhow::Result<()> {
-    let mut watcher = recommended_watcher(sender)?;
-    watcher.watch(&log_path, RecursiveMode::NonRecursive)?;
-    Ok(())
-  });
-
-  while let Ok(ev) = receiver.recv() {
+  while let Some(ev) = notifs.next().await {
     let event_err: Result<(), BoxDynError> = try {
       let ev = ev?;
-      if ev.kind.is_modify() {
+      if ev.mask.contains(EventMask::MODIFY) {
         let mut v = vec![];
         logfile.read_to_end(&mut v)?;
         if !v.is_empty() {
           yield_!(TailEvent::Text(String::from_utf8_lossy(&v)));
         }
-      } else if ev.kind.is_create() {
+      } else if ev.mask.contains(EventMask::CREATE) {
         yield_!(TailEvent::Reset);
         break;
       }
@@ -94,8 +93,6 @@ async fn tail_the_file(
       break;
     }
   }
-
-  jh.abort();
 
   Ok(())
 }

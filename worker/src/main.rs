@@ -35,8 +35,7 @@ struct Worker<'a> {
 
 impl<'a> Worker<'a> {
   fn new(cfg: Config, db: &'a PgPool) -> Result<Self> {
-    let fsdata =
-      statvfs("/nix/store").context("While collecting filesystem info about /nix/store")?;
+    let fsdata = statvfs("/nix/store")?;
 
     Ok(Self {
       cfg: Arc::new(cfg),
